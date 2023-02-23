@@ -1490,7 +1490,7 @@ void EmitLdrdLiteralTest(MacroAssembler* masm, TestMacroAssembler* test) {
     VIXL_CHECK(masm->GetCursorOffset() == end);
   }
 
-  // Check that the pool has not been emited along the way.
+  // Check that the pool has not been emitted along the way.
   CHECK_POOL_SIZE(8);
   // This extra instruction should trigger an emit of the pool.
   __ Nop();
@@ -2207,7 +2207,7 @@ TEST(custom_literal_place_shared) {
     VIXL_CHECK(!after.IsBound());
 
     // Load the entries several times to test that literals can be shared.
-    for (int i = 0; i < 20; i++) {
+    for (int j = 0; j < 20; j++) {
       (masm.*test_case.instruction)(r0, &before);
       (masm.*test_case.instruction)(r1, &after);
     }
@@ -3653,7 +3653,7 @@ static void NearBranchAndLiteralFuzzHelper(InstructionSet isa,
   // below). The cases are split in 4 groups:
   //
   //   - 0..3: Generate various amount of nops.
-  //   - 4..7: Generate various load intstructions with literals.
+  //   - 4..7: Generate various load instructions with literals.
   //   - 8..14: Generate various branch instructions.
   //   - 15..19: Generate various amount of nops.
   //
@@ -4849,7 +4849,7 @@ TEST_T32(branch_fuzz_example) {
 
 // Generate a "B" and a "Cbz" which have the same checkpoint. Without proper
 // management (i.e. if the veneers were only generated at the shared
-// checkpoint), one one of the branches would be out of range.
+// checkpoint), one of the branches would be out of range.
 TEST_T32(veneer_simultaneous) {
   SETUP();
 
@@ -5109,7 +5109,7 @@ TEST_T32(veneer_and_literal4) {
   __ Ldr(r11, literal);
 
   // The range for ldr is 4095, the range for cbz is 127. Generate nops
-  // to have the ldr becomming out of range just before the cbz.
+  // to have the ldr becoming out of range just before the cbz.
   const int NUM_NOPS = 2044;
   const int NUM_RANGE = 58;
 
@@ -5160,7 +5160,7 @@ TEST_T32(veneer_and_literal5) {
 
   int first_test = 2000;
   // Test on both sizes of the Adr range which is 4095.
-  for (int test = 0; test < kTestCount; test++) {
+  for (int test_num = 0; test_num < kTestCount; test_num++) {
     const int string_size = 1000;  // A lot more than the cbz range.
     std::string test_string(string_size, 'x');
     StringLiteral big_literal(test_string.c_str());
@@ -5168,7 +5168,7 @@ TEST_T32(veneer_and_literal5) {
     __ Adr(r11, &big_literal);
 
     {
-      int num_nops = first_test + test;
+      int num_nops = first_test + test_num;
       ExactAssemblyScope aas(&masm,
                              2 * num_nops,
                              CodeBufferCheckScope::kMaximumSize);
@@ -5177,15 +5177,15 @@ TEST_T32(veneer_and_literal5) {
       }
     }
 
-    __ Cbz(r1, &labels[test]);
+    __ Cbz(r1, &labels[test_num]);
 
     {
       ExactAssemblyScope aas(&masm, 4, CodeBufferCheckScope::kMaximumSize);
       __ add(r1, r1, 3);
     }
-    __ Bind(&labels[test]);
-    // Emit the literal pool if it has not beeen emitted (it's the case for
-    // the lower values of test).
+    __ Bind(&labels[test_num]);
+    // Emit the literal pool if it has not been emitted (it's the case for
+    // the lower values of test_num).
     __ EmitLiteralPool(PoolManager<int32_t>::kBranchRequired);
   }
 
@@ -6476,61 +6476,65 @@ TEST_T32(assembler_bind_label) {
   POSITIVE_TEST_FORWARD_REFERENCE_INFO(INST, INFO, ASM)
 #endif
 
-#define POSITIVE_TEST_FORWARD_REFERENCE_INFO(INST, INFO, ASM)                \
-  can_encode = masm.INFO;                                                    \
-  VIXL_CHECK(can_encode);                                                    \
-  {                                                                          \
-    ExactAssemblyScope scope(&masm,                                          \
-                             info->size,                                     \
-                             ExactAssemblyScope::kExactSize);                \
-    int32_t pc = masm.GetCursorOffset() + __ GetArchitectureStatePCOffset(); \
-    if (info->pc_needs_aligning == ReferenceInfo::kAlignPc) {                \
-      pc = AlignDown(pc, 4);                                                 \
-    }                                                                        \
-    Label label(pc + info->min_offset);                                      \
-    masm.ASM;                                                                \
-  }                                                                          \
-  {                                                                          \
-    ExactAssemblyScope scope(&masm,                                          \
-                             info->size,                                     \
-                             ExactAssemblyScope::kExactSize);                \
-    int32_t pc = masm.GetCursorOffset() + __ GetArchitectureStatePCOffset(); \
-    if (info->pc_needs_aligning == ReferenceInfo::kAlignPc) {                \
-      pc = AlignDown(pc, 4);                                                 \
-    }                                                                        \
-    Label label(pc + info->max_offset);                                      \
-    masm.ASM;                                                                \
+#define POSITIVE_TEST_FORWARD_REFERENCE_INFO(INST, INFO, ASM)       \
+  can_encode = masm.INFO;                                           \
+  VIXL_CHECK(can_encode);                                           \
+  {                                                                 \
+    ExactAssemblyScope scope(&masm,                                 \
+                             info->size,                            \
+                             ExactAssemblyScope::kExactSize);       \
+    int32_t program_counter =                                       \
+        masm.GetCursorOffset() + __ GetArchitectureStatePCOffset(); \
+    if (info->pc_needs_aligning == ReferenceInfo::kAlignPc) {       \
+      program_counter = AlignDown(program_counter, 4);              \
+    }                                                               \
+    Label label(program_counter + info->min_offset);                \
+    masm.ASM;                                                       \
+  }                                                                 \
+  {                                                                 \
+    ExactAssemblyScope scope(&masm,                                 \
+                             info->size,                            \
+                             ExactAssemblyScope::kExactSize);       \
+    int32_t program_counter =                                       \
+        masm.GetCursorOffset() + __ GetArchitectureStatePCOffset(); \
+    if (info->pc_needs_aligning == ReferenceInfo::kAlignPc) {       \
+      program_counter = AlignDown(program_counter, 4);              \
+    }                                                               \
+    Label label(program_counter + info->max_offset);                \
+    masm.ASM;                                                       \
   }
 
 #ifdef VIXL_NEGATIVE_TESTING
-#define NEGATIVE_TEST_FORWARD_REFERENCE_INFO(INST, ASM)                      \
-  try {                                                                      \
-    ExactAssemblyScope scope(&masm,                                          \
-                             info->size,                                     \
-                             ExactAssemblyScope::kMaximumSize);              \
-    int32_t pc = masm.GetCursorOffset() + __ GetArchitectureStatePCOffset(); \
-    if (info->pc_needs_aligning == ReferenceInfo::kAlignPc) {                \
-      pc = AlignDown(pc, 4);                                                 \
-    }                                                                        \
-    Label label(pc + info->max_offset + info->alignment);                    \
-    masm.ASM;                                                                \
-    printf("Negative test for forward reference failed for %s.\n", INST);    \
-    abort();                                                                 \
-  } catch (const std::runtime_error&) {                                      \
-  }                                                                          \
-  try {                                                                      \
-    ExactAssemblyScope scope(&masm,                                          \
-                             info->size,                                     \
-                             ExactAssemblyScope::kMaximumSize);              \
-    int32_t pc = masm.GetCursorOffset() + __ GetArchitectureStatePCOffset(); \
-    if (info->pc_needs_aligning == ReferenceInfo::kAlignPc) {                \
-      pc = AlignDown(pc, 4);                                                 \
-    }                                                                        \
-    Label label(pc + info->min_offset - info->alignment);                    \
-    masm.ASM;                                                                \
-    printf("Negative test for forward reference failed for %s.\n", INST);    \
-    abort();                                                                 \
-  } catch (const std::runtime_error&) {                                      \
+#define NEGATIVE_TEST_FORWARD_REFERENCE_INFO(INST, ASM)                   \
+  try {                                                                   \
+    ExactAssemblyScope scope(&masm,                                       \
+                             info->size,                                  \
+                             ExactAssemblyScope::kMaximumSize);           \
+    int32_t program_counter =                                             \
+        masm.GetCursorOffset() + __ GetArchitectureStatePCOffset();       \
+    if (info->pc_needs_aligning == ReferenceInfo::kAlignPc) {             \
+      program_counter = AlignDown(program_counter, 4);                    \
+    }                                                                     \
+    Label label(program_counter + info->max_offset + info->alignment);    \
+    masm.ASM;                                                             \
+    printf("Negative test for forward reference failed for %s.\n", INST); \
+    abort();                                                              \
+  } catch (const std::runtime_error&) {                                   \
+  }                                                                       \
+  try {                                                                   \
+    ExactAssemblyScope scope(&masm,                                       \
+                             info->size,                                  \
+                             ExactAssemblyScope::kMaximumSize);           \
+    int32_t program_counter =                                             \
+        masm.GetCursorOffset() + __ GetArchitectureStatePCOffset();       \
+    if (info->pc_needs_aligning == ReferenceInfo::kAlignPc) {             \
+      program_counter = AlignDown(program_counter, 4);                    \
+    }                                                                     \
+    Label label(program_counter + info->min_offset - info->alignment);    \
+    masm.ASM;                                                             \
+    printf("Negative test for forward reference failed for %s.\n", INST); \
+    abort();                                                              \
+  } catch (const std::runtime_error&) {                                   \
   }
 #else
 #define NEGATIVE_TEST_FORWARD_REFERENCE_INFO(INST, ASM)

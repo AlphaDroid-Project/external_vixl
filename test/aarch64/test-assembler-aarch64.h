@@ -132,6 +132,12 @@ namespace aarch64 {
     SimulationCPUFeaturesScope cpu(&masm, kInfrastructureCPUFeatures);        \
     __ PushCalleeSavedRegisters();                                            \
   }                                                                           \
+  /* The infrastructure code hasn't been covered at the moment, e.g. */       \
+  /* prologue/epilogue. Suppress tagging mis-match exception before  */       \
+  /* this point. */                                                           \
+  if (masm.GetCPUFeatures()->Has(CPUFeatures::kMTE)) {                        \
+    __ Hlt(DebugHltOpcode::kMTEActive);                                       \
+  }                                                                           \
   {                                                                           \
     int trace_parameters = 0;                                                 \
     if (Test::trace_reg()) trace_parameters |= LOG_STATE;                     \
@@ -151,6 +157,9 @@ namespace aarch64 {
   /* Avoid unused-variable warnings in case a test never calls RUN(). */ \
   USE(offset_before_infrastructure_end);                                 \
   __ Trace(LOG_ALL, TRACE_DISABLE);                                      \
+  if (masm.GetCPUFeatures()->Has(CPUFeatures::kMTE)) {                   \
+    __ Hlt(DebugHltOpcode::kMTEInactive);                                \
+  }                                                                      \
   {                                                                      \
     SimulationCPUFeaturesScope cpu(&masm, kInfrastructureCPUFeatures);   \
     core.Dump(&masm);                                                    \
@@ -163,8 +172,8 @@ namespace aarch64 {
   RUN_WITHOUT_SEEN_FEATURE_CHECK();                                            \
   {                                                                            \
     /* We expect the test to use all of the features it requested, plus the */ \
-    /* features that the instructure code requires.                         */ \
-    CPUFeatures const& expected =                                              \
+    /* features that the instruction code requires.                         */ \
+    CPUFeatures const& expected_features =                                     \
         simulator.GetCPUFeatures()->With(CPUFeatures::kNEON);                  \
     CPUFeatures const& seen = simulator.GetSeenFeatures();                     \
     /* This gives three broad categories of features that we care about:    */ \
@@ -172,13 +181,13 @@ namespace aarch64 {
     /*  2. Things seen, but not expected. The simulator catches these.      */ \
     /*  3. Things expected, but not seen. We check these here.              */ \
     /* In a valid, passing test, categories 2 and 3 should be empty.        */ \
-    if (seen != expected) {                                                    \
+    if (seen != expected_features) {                                           \
       /* The Simulator should have caught anything in category 2 already.   */ \
-      VIXL_ASSERT(expected.Has(seen));                                         \
+      VIXL_ASSERT(expected_features.Has(seen));                                \
       /* Anything left is category 3: things expected, but not seen. This   */ \
       /* is not necessarily a bug in VIXL itself, but indicates that the    */ \
       /* test is less strict than it could be.                              */ \
-      CPUFeatures missing = expected.Without(seen);                            \
+      CPUFeatures missing = expected_features.Without(seen);                   \
       VIXL_ASSERT(missing.Count() > 0);                                        \
       std::cout << "Error: expected to see CPUFeatures { " << missing          \
                 << " }\n";                                                     \
@@ -265,15 +274,15 @@ namespace aarch64 {
   if (Test::disassemble()) {                                              \
     PrintDisassembler disasm(stdout);                                     \
     CodeBuffer* buffer = masm.GetBuffer();                                \
-    Instruction* start = buffer->GetOffsetAddress<Instruction*>(          \
+    Instruction* test_start = buffer->GetOffsetAddress<Instruction*>(     \
         offset_after_infrastructure_start);                               \
-    Instruction* end = buffer->GetOffsetAddress<Instruction*>(            \
+    Instruction* test_end = buffer->GetOffsetAddress<Instruction*>(       \
         offset_before_infrastructure_end);                                \
                                                                           \
     if (Test::disassemble_infrastructure()) {                             \
       Instruction* infra_start = buffer->GetStartAddress<Instruction*>(); \
       printf("# Infrastructure code (prologue)\n");                       \
-      disasm.DisassembleBuffer(infra_start, start);                       \
+      disasm.DisassembleBuffer(infra_start, test_start);                  \
       printf("# Test code\n");                                            \
     } else {                                                              \
       printf(                                                             \
@@ -281,12 +290,12 @@ namespace aarch64 {
           "Use --disassemble to see it.\n");                              \
     }                                                                     \
                                                                           \
-    disasm.DisassembleBuffer(start, end);                                 \
+    disasm.DisassembleBuffer(test_start, test_end);                       \
                                                                           \
     if (Test::disassemble_infrastructure()) {                             \
       printf("# Infrastructure code (epilogue)\n");                       \
       Instruction* infra_end = buffer->GetEndAddress<Instruction*>();     \
-      disasm.DisassembleBuffer(end, infra_end);                           \
+      disasm.DisassembleBuffer(test_end, infra_end);                      \
     }                                                                     \
   }
 

@@ -48,6 +48,7 @@ const IDRegister::Field AA64PFR0::kCSV3(60);
 const IDRegister::Field AA64PFR1::kBT(0);
 const IDRegister::Field AA64PFR1::kSSBS(4);
 const IDRegister::Field AA64PFR1::kMTE(8);
+const IDRegister::Field AA64PFR1::kSME(24);
 
 const IDRegister::Field AA64ISAR0::kAES(4);
 const IDRegister::Field AA64ISAR0::kSHA1(8);
@@ -78,14 +79,33 @@ const IDRegister::Field AA64ISAR1::kBF16(44);
 const IDRegister::Field AA64ISAR1::kDGH(48);
 const IDRegister::Field AA64ISAR1::kI8MM(52);
 
+const IDRegister::Field AA64ISAR2::kWFXT(0);
+const IDRegister::Field AA64ISAR2::kRPRES(4);
+
+const IDRegister::Field AA64MMFR0::kECV(60);
+
 const IDRegister::Field AA64MMFR1::kLO(16);
+const IDRegister::Field AA64MMFR1::kAFP(44);
 
 const IDRegister::Field AA64MMFR2::kAT(32);
 
+const IDRegister::Field AA64ZFR0::kSVEver(0);
+const IDRegister::Field AA64ZFR0::kAES(4);
+const IDRegister::Field AA64ZFR0::kBitPerm(16);
 const IDRegister::Field AA64ZFR0::kBF16(20);
+const IDRegister::Field AA64ZFR0::kSHA3(32);
+const IDRegister::Field AA64ZFR0::kSM4(40);
 const IDRegister::Field AA64ZFR0::kI8MM(44);
 const IDRegister::Field AA64ZFR0::kF32MM(52);
 const IDRegister::Field AA64ZFR0::kF64MM(56);
+
+const IDRegister::Field AA64SMFR0::kSMEf32f32(32, 1);
+const IDRegister::Field AA64SMFR0::kSMEb16f32(34, 1);
+const IDRegister::Field AA64SMFR0::kSMEf16f32(35, 1);
+const IDRegister::Field AA64SMFR0::kSMEi8i32(36);
+const IDRegister::Field AA64SMFR0::kSMEf64f64(48, 1);
+const IDRegister::Field AA64SMFR0::kSMEi16i64(52);
+const IDRegister::Field AA64SMFR0::kSMEfa64(63, 1);
 
 CPUFeatures AA64PFR0::GetCPUFeatures() const {
   CPUFeatures f;
@@ -109,6 +129,8 @@ CPUFeatures AA64PFR1::GetCPUFeatures() const {
   if (Get(kSSBS) >= 2) f.Combine(CPUFeatures::kSSBSControl);
   if (Get(kMTE) >= 1) f.Combine(CPUFeatures::kMTEInstructions);
   if (Get(kMTE) >= 2) f.Combine(CPUFeatures::kMTE);
+  if (Get(kMTE) >= 3) f.Combine(CPUFeatures::kMTE3);
+  if (Get(kSME) >= 1) f.Combine(CPUFeatures::kSME);
   return f;
 }
 
@@ -145,6 +167,7 @@ CPUFeatures AA64ISAR1::GetCPUFeatures() const {
   if (Get(kSB) >= 1) f.Combine(CPUFeatures::kSB);
   if (Get(kSPECRES) >= 1) f.Combine(CPUFeatures::kSPECRES);
   if (Get(kBF16) >= 1) f.Combine(CPUFeatures::kBF16);
+  if (Get(kBF16) >= 2) f.Combine(CPUFeatures::kEBF16);
   if (Get(kDGH) >= 1) f.Combine(CPUFeatures::kDGH);
   if (Get(kI8MM) >= 1) f.Combine(CPUFeatures::kI8MM);
 
@@ -168,9 +191,23 @@ CPUFeatures AA64ISAR1::GetCPUFeatures() const {
   return f;
 }
 
+CPUFeatures AA64ISAR2::GetCPUFeatures() const {
+  CPUFeatures f;
+  if (Get(kWFXT) >= 2) f.Combine(CPUFeatures::kWFXT);
+  if (Get(kRPRES) >= 1) f.Combine(CPUFeatures::kRPRES);
+  return f;
+}
+
+CPUFeatures AA64MMFR0::GetCPUFeatures() const {
+  CPUFeatures f;
+  if (Get(kECV) >= 1) f.Combine(CPUFeatures::kECV);
+  return f;
+}
+
 CPUFeatures AA64MMFR1::GetCPUFeatures() const {
   CPUFeatures f;
   if (Get(kLO) >= 1) f.Combine(CPUFeatures::kLORegions);
+  if (Get(kAFP) >= 1) f.Combine(CPUFeatures::kAFP);
   return f;
 }
 
@@ -187,7 +224,26 @@ CPUFeatures AA64ZFR0::GetCPUFeatures() const {
   if (Get(kF64MM) >= 1) f.Combine(CPUFeatures::kSVEF64MM);
   if (Get(kF32MM) >= 1) f.Combine(CPUFeatures::kSVEF32MM);
   if (Get(kI8MM) >= 1) f.Combine(CPUFeatures::kSVEI8MM);
+  if (Get(kSM4) >= 1) f.Combine(CPUFeatures::kSVESM4);
+  if (Get(kSHA3) >= 1) f.Combine(CPUFeatures::kSVESHA3);
   if (Get(kBF16) >= 1) f.Combine(CPUFeatures::kSVEBF16);
+  if (Get(kBF16) >= 2) f.Combine(CPUFeatures::kSVE_EBF16);
+  if (Get(kBitPerm) >= 1) f.Combine(CPUFeatures::kSVEBitPerm);
+  if (Get(kAES) >= 1) f.Combine(CPUFeatures::kSVEAES);
+  if (Get(kAES) >= 2) f.Combine(CPUFeatures::kSVEPmull128);
+  if (Get(kSVEver) >= 1) f.Combine(CPUFeatures::kSVE2);
+  return f;
+}
+
+CPUFeatures AA64SMFR0::GetCPUFeatures() const {
+  CPUFeatures f;
+  if (Get(kSMEf32f32) >= 1) f.Combine(CPUFeatures::kSMEf32f32);
+  if (Get(kSMEb16f32) >= 1) f.Combine(CPUFeatures::kSMEb16f32);
+  if (Get(kSMEf16f32) >= 1) f.Combine(CPUFeatures::kSMEf16f32);
+  if (Get(kSMEi8i32) >= 15) f.Combine(CPUFeatures::kSMEi8i32);
+  if (Get(kSMEf64f64) >= 1) f.Combine(CPUFeatures::kSMEf64f64);
+  if (Get(kSMEi16i64) >= 15) f.Combine(CPUFeatures::kSMEi16i64);
+  if (Get(kSMEfa64) >= 1) f.Combine(CPUFeatures::kSMEfa64);
   return f;
 }
 
@@ -219,11 +275,11 @@ CPUFeatures CPU::InferCPUFeaturesFromOS(
     CPUFeatures::QueryIDRegistersOption option) {
   CPUFeatures features;
 
-#if VIXL_USE_LINUX_HWCAP
+#ifdef VIXL_USE_LINUX_HWCAP
   // Map each set bit onto a feature. Ideally, we'd use HWCAP_* macros rather
   // than explicit bits, but explicit bits allow us to identify features that
   // the toolchain doesn't know about.
-  static const CPUFeatures::Feature kFeatureBits[] =
+  static const CPUFeatures::Feature kFeatureBitsLow[] =
       {// Bits 0-7
        CPUFeatures::kFP,
        CPUFeatures::kNEON,
@@ -259,17 +315,21 @@ CPUFeatures CPU::InferCPUFeaturesFromOS(
        CPUFeatures::kSSBSControl,
        CPUFeatures::kSB,
        CPUFeatures::kPAuth,
-       CPUFeatures::kPAuthGeneric,
-       // Bits 32-39
+       CPUFeatures::kPAuthGeneric};
+  VIXL_STATIC_ASSERT(ArrayLength(kFeatureBitsLow) < 64);
+
+  static const CPUFeatures::Feature kFeatureBitsHigh[] =
+      {// Bits 0-7
        CPUFeatures::kDCCVADP,
-       CPUFeatures::kNone,  // "sve2"
-       CPUFeatures::kNone,  // "sveaes"
-       CPUFeatures::kNone,  // "svepmull"
-       CPUFeatures::kNone,  // "svebitperm"
-       CPUFeatures::kNone,  // "svesha3"
-       CPUFeatures::kNone,  // "svesm4"
+       CPUFeatures::kSVE2,
+       CPUFeatures::kSVEAES,
+       CPUFeatures::kSVEPmull128,
+       CPUFeatures::kSVEBitPerm,
+       CPUFeatures::kSVESHA3,
+       CPUFeatures::kSVESM4,
+       CPUFeatures::kAXFlag,
+       // Bits 8-15
        CPUFeatures::kFrintToFixedSizedInt,
-       // Bits 40-47
        CPUFeatures::kSVEI8MM,
        CPUFeatures::kSVEF32MM,
        CPUFeatures::kSVEF64MM,
@@ -277,19 +337,46 @@ CPUFeatures CPU::InferCPUFeaturesFromOS(
        CPUFeatures::kI8MM,
        CPUFeatures::kBF16,
        CPUFeatures::kDGH,
+       // Bits 16-23
        CPUFeatures::kRNG,
-       // Bits 48+
-       CPUFeatures::kBTI};
+       CPUFeatures::kBTI,
+       CPUFeatures::kMTE,
+       CPUFeatures::kECV,
+       CPUFeatures::kAFP,
+       CPUFeatures::kRPRES,
+       CPUFeatures::kMTE3,
+       CPUFeatures::kSME,
+       // Bits 24-31
+       CPUFeatures::kSMEi16i64,
+       CPUFeatures::kSMEf64f64,
+       CPUFeatures::kSMEi8i32,
+       CPUFeatures::kSMEf16f32,
+       CPUFeatures::kSMEb16f32,
+       CPUFeatures::kSMEf32f32,
+       CPUFeatures::kSMEfa64,
+       CPUFeatures::kWFXT,
+       // Bits 32-39
+       CPUFeatures::kEBF16,
+       CPUFeatures::kSVE_EBF16};
+  VIXL_STATIC_ASSERT(ArrayLength(kFeatureBitsHigh) < 64);
 
-  uint64_t hwcap_low32 = getauxval(AT_HWCAP);
-  uint64_t hwcap_high32 = getauxval(AT_HWCAP2);
-  VIXL_ASSERT(IsUint32(hwcap_low32));
-  VIXL_ASSERT(IsUint32(hwcap_high32));
-  uint64_t hwcap = hwcap_low32 | (hwcap_high32 << 32);
+  auto combine_features = [&features](uint64_t hwcap,
+                                      const CPUFeatures::Feature* feature_array,
+                                      size_t features_size) {
+    for (size_t i = 0; i < features_size; i++) {
+      if (hwcap & (UINT64_C(1) << i)) features.Combine(feature_array[i]);
+    }
+  };
 
-  VIXL_STATIC_ASSERT(ArrayLength(kFeatureBits) < 64);
-  for (size_t i = 0; i < ArrayLength(kFeatureBits); i++) {
-    if (hwcap & (UINT64_C(1) << i)) features.Combine(kFeatureBits[i]);
+  uint64_t hwcap_low = getauxval(AT_HWCAP);
+  uint64_t hwcap_high = getauxval(AT_HWCAP2);
+
+  combine_features(hwcap_low, kFeatureBitsLow, ArrayLength(kFeatureBitsLow));
+  combine_features(hwcap_high, kFeatureBitsHigh, ArrayLength(kFeatureBitsHigh));
+
+  // MTE support from HWCAP2 signifies FEAT_MTE1 and FEAT_MTE2 support
+  if (features.Has(CPUFeatures::kMTE)) {
+    features.Combine(CPUFeatures::kMTEInstructions);
   }
 #endif  // VIXL_USE_LINUX_HWCAP
 
@@ -387,7 +474,7 @@ int CPU::ReadSVEVectorLengthInBits() {
 }
 
 
-void CPU::EnsureIAndDCacheCoherency(void *address, size_t length) {
+void CPU::EnsureIAndDCacheCoherency(void* address, size_t length) {
 #ifdef __aarch64__
   // Implement the cache synchronisation for all targets where AArch64 is the
   // host, even if we're building the simulator for an AAarch64 host. This
@@ -484,6 +571,7 @@ void CPU::EnsureIAndDCacheCoherency(void *address, size_t length) {
   USE(address, length);
 #endif
 }
+
 
 }  // namespace aarch64
 }  // namespace vixl

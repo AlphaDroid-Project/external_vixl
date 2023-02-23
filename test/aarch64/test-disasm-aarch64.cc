@@ -133,6 +133,15 @@ TEST(move_immediate) {
   COMPARE(movn(x19, 0x5555, 32), "mov x19, #0xffffaaaaffffffff");
   COMPARE(movn(x20, 0xaaaa, 48), "mov x20, #0x5555ffffffffffff");
 
+  COMPARE(mov(w14, 0x1234), "mov w14, #0x1234");
+  COMPARE(mov(x15, 0xabcd0000), "mov x15, #0xabcd0000");
+  COMPARE(mov(x16, 0xaaaa000000000000), "mov x16, #0xaaaa000000000000");
+  COMPARE(mov(w17, 0xaaaaffff), "mov w17, #0xaaaaffff");
+  COMPARE(mov(x18, 0xffffaaaaffffffff), "mov x18, #0xffffaaaaffffffff");
+  COMPARE(mov(x19, 0xffffffffffffffff), "mov x19, #0xffffffffffffffff");
+  COMPARE(mov(x20, 0xc001c001c001c001), "mov x20, #0xc001c001c001c001");
+  COMPARE(mov(sp, 0xfefefefefefefefe), "mov sp, #0xfefefefefefefefe");
+
   COMPARE(movk(w21, 0), "movk w21, #0x0");
   COMPARE(movk(x22, 0, 0), "movk x22, #0x0");
   COMPARE(movk(w23, 0, 16), "movk w23, #0x0, lsl #16");
@@ -560,6 +569,19 @@ TEST(bitfield) {
   CLEANUP();
 }
 
+TEST(bitfield_regression_test) {
+  SETUP();
+
+  COMPARE(dci(0x533ae450), "unallocated (Unallocated)");
+  COMPARE(dci(0x133c464c), "unallocated (Unallocated)");
+  COMPARE(dci(0x133c4e6d), "unallocated (Unallocated)");
+  COMPARE(dci(0x133c5e45), "unallocated (Unallocated)");
+  COMPARE(dci(0x1335853c), "unallocated (Unallocated)");
+  COMPARE(dci(0x1335a73d), "unallocated (Unallocated)");
+
+  CLEANUP();
+}
+
 
 TEST(crc32b) {
   SETUP();
@@ -954,6 +976,69 @@ TEST(branch) {
   CLEANUP();
 }
 
+TEST(mte_load_store) {
+  SETUP();
+
+  COMPARE(ldg(x0, MemOperand(sp)), "ldg x0, [sp]");
+  COMPARE(ldg(x22, MemOperand(x3, 32)), "ldg x22, [x3, #32]");
+  COMPARE(st2g(x3, MemOperand(sp)), "st2g x3, [sp]");
+  COMPARE(st2g(sp, MemOperand(sp, -320)), "st2g sp, [sp, #-320]");
+  COMPARE(st2g(x30, MemOperand(x4, 160, PreIndex)), "st2g x30, [x4, #160]!");
+  COMPARE(st2g(x22, MemOperand(x24, 1600, PostIndex)),
+          "st2g x22, [x24], #1600");
+  COMPARE(stg(x0, MemOperand(x1)), "stg x0, [x1]");
+  COMPARE(stg(x2, MemOperand(x3, 16)), "stg x2, [x3, #16]");
+  COMPARE(stg(sp, MemOperand(x1, -16, PreIndex)), "stg sp, [x1, #-16]!");
+  COMPARE(stg(x4, MemOperand(sp, -256, PostIndex)), "stg x4, [sp], #-256");
+  COMPARE(stgp(x29, x14, MemOperand(sp)), "stgp x29, x14, [sp]");
+  COMPARE(stgp(x3, x4, MemOperand(x3, -1024)), "stgp x3, x4, [x3, #-1024]");
+  COMPARE(stgp(x17, x7, MemOperand(x18, -64, PreIndex)),
+          "stgp x17, x7, [x18, #-64]!");
+  COMPARE(stgp(x5, x21, MemOperand(sp, 1008, PostIndex)),
+          "stgp x5, x21, [sp], #1008");
+  COMPARE(stzg(x20, MemOperand(x1)), "stzg x20, [x1]");
+  COMPARE(stzg(x22, MemOperand(x3, -32)), "stzg x22, [x3, #-32]");
+  COMPARE(stzg(sp, MemOperand(x1, 32, PreIndex)), "stzg sp, [x1, #32]!");
+  COMPARE(stzg(x5, MemOperand(sp, -2560, PostIndex)), "stzg x5, [sp], #-2560");
+  COMPARE(stz2g(x6, MemOperand(x21)), "stz2g x6, [x21]");
+  COMPARE(stz2g(x18, MemOperand(x13, 16)), "stz2g x18, [x13, #16]");
+  COMPARE(stz2g(sp, MemOperand(sp, -384, PreIndex)), "stz2g sp, [sp, #-384]!");
+  COMPARE(stz2g(sp, MemOperand(x7, -256, PostIndex)), "stz2g sp, [x7], #-256");
+
+  COMPARE_MACRO(Ldg(x10, MemOperand(x17)), "ldg x10, [x17]");
+  COMPARE_MACRO(Ldg(x15, MemOperand(sp, -4096)), "ldg x15, [sp, #-4096]");
+  COMPARE_MACRO(St2g(x3, MemOperand(x15)), "st2g x3, [x15]");
+  COMPARE_MACRO(St2g(sp, MemOperand(sp, -1600)), "st2g sp, [sp, #-1600]");
+  COMPARE_MACRO(St2g(x30, MemOperand(x4, 3216, PreIndex)),
+                "st2g x30, [x4, #3216]!");
+  COMPARE_MACRO(St2g(x18, MemOperand(x2, 352, PostIndex)),
+                "st2g x18, [x2], #352");
+  COMPARE_MACRO(Stg(x10, MemOperand(x17)), "stg x10, [x17]");
+  COMPARE_MACRO(Stg(sp, MemOperand(x3, -4096)), "stg sp, [x3, #-4096]");
+  COMPARE_MACRO(Stg(sp, MemOperand(sp, 4080, PreIndex)),
+                "stg sp, [sp, #4080]!");
+  COMPARE_MACRO(Stg(x14, MemOperand(x20, 1024, PostIndex)),
+                "stg x14, [x20], #1024");
+  COMPARE_MACRO(Stgp(x3, x5, MemOperand(x7)), "stgp x3, x5, [x7]");
+  COMPARE_MACRO(Stgp(x8, x4, MemOperand(x2, -496)), "stgp x8, x4, [x2, #-496]");
+  COMPARE_MACRO(Stgp(x27, x7, MemOperand(sp, -672, PreIndex)),
+                "stgp x27, x7, [sp, #-672]!");
+  COMPARE_MACRO(Stgp(x14, x16, MemOperand(x0, 576, PostIndex)),
+                "stgp x14, x16, [x0], #576");
+  COMPARE_MACRO(Stz2g(x22, MemOperand(x12)), "stz2g x22, [x12]");
+  COMPARE_MACRO(Stz2g(sp, MemOperand(sp, -704)), "stz2g sp, [sp, #-704]");
+  COMPARE_MACRO(Stz2g(x3, MemOperand(x4, 272, PreIndex)),
+                "stz2g x3, [x4, #272]!");
+  COMPARE_MACRO(Stz2g(sp, MemOperand(sp, 1024, PostIndex)),
+                "stz2g sp, [sp], #1024");
+  COMPARE_MACRO(Stzg(x17, MemOperand(x11)), "stzg x17, [x11]");
+  COMPARE_MACRO(Stzg(x29, MemOperand(x3, -3552)), "stzg x29, [x3, #-3552]");
+  COMPARE_MACRO(Stzg(x2, MemOperand(x15, 784, PreIndex)),
+                "stzg x2, [x15, #784]!");
+  COMPARE_MACRO(Stzg(x8, MemOperand(x3, 1488, PostIndex)),
+                "stzg x8, [x3], #1488");
+  CLEANUP();
+}
 
 TEST(load_store) {
   SETUP();
@@ -2609,6 +2694,20 @@ TEST(system_dc) {
   CLEANUP();
 }
 
+TEST(system_dc_mte) {
+  SETUP();
+
+  COMPARE(dc(GVA, x0), "dc gva, x0");
+  COMPARE(dc(GZVA, x1), "dc gzva, x1");
+  COMPARE(dc(CGVAC, x2), "dc cgvac, x2");
+  COMPARE(dc(CGDVAC, x3), "dc cgdvac, x3");
+  COMPARE(dc(CGVAP, x3), "dc cgvap, x3");
+  COMPARE(dc(CGDVAP, x3), "dc cgdvap, x3");
+  COMPARE(dc(CIGVAC, x4), "dc cigvac, x4");
+  COMPARE(dc(CIGDVAC, x4), "dc cigdvac, x4");
+
+  CLEANUP();
+}
 
 TEST(system_nop) {
   SETUP();
@@ -2919,8 +3018,8 @@ TEST(barriers) {
 
   COMPARE_MACRO(Dsb(FullSystem, BarrierOther), "dsb sy (0b1100)");
   COMPARE_MACRO(Dsb(InnerShareable, BarrierOther), "dsb sy (0b1000)");
-  COMPARE_MACRO(Dsb(NonShareable, BarrierOther), "dsb sy (0b0100)");
-  COMPARE_MACRO(Dsb(OuterShareable, BarrierOther), "dsb sy (0b0000)");
+  COMPARE_MACRO(Dsb(NonShareable, BarrierOther), "pssbb");
+  COMPARE_MACRO(Dsb(OuterShareable, BarrierOther), "ssbb");
 
   // ISB
   COMPARE_MACRO(Isb(), "isb");
@@ -3021,7 +3120,7 @@ TEST(hint) {
   COMPARE(hint(WFI), "wfi");
   COMPARE(hint(SEV), "sev");
   COMPARE(hint(SEVL), "sevl");
-  COMPARE(hint(6), "hint #6");
+  COMPARE(hint(6), "dgh");
   COMPARE(hint(ESB), "esb");
   COMPARE(hint(CSDB), "csdb");
   COMPARE(hint(42), "hint #42");
@@ -3073,6 +3172,763 @@ TEST(udf) {
   COMPARE(dc(0x01000000), "unallocated (Unallocated)");
   COMPARE(dc(0x20000000), "unallocated (Unallocated)");
   COMPARE(dc(0x80000000), "unallocated (Unallocated)");
+
+  CLEANUP();
+}
+
+TEST(mte) {
+  SETUP();
+
+#if 0
+  COMPARE(ldg(x2, x2, int imm9), "ldg <Xt>, [<Xn|SP>{, #<simm>}]");
+  COMPARE(st2g(x3, int imm9), "st2g <Xt|SP>, [<Xn|SP>{, #<simm>}]");
+  COMPARE(st2g(x31, int imm9), "st2g <Xt|SP>, [<Xn|SP>], #<simm>");
+  COMPARE(st2g(x30, int imm9), "st2g <Xt|SP>, [<Xn|SP>, #<simm>]!");
+  COMPARE(stgp(x301, x302, x30, int imm7), "stgp <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]");
+  COMPARE(stgp(x201, x202, x20, int imm7), "stgp <Xt1>, <Xt2>, [<Xn|SP>], #<imm>");
+  COMPARE(stgp(x161, x162, x16, int imm7), "stgp <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!");
+  COMPARE(stg(x9, int imm9), "stg <Xt|SP>, [<Xn|SP>{, #<simm>}]");
+  COMPARE(stg(x20, int imm9), "stg <Xt|SP>, [<Xn|SP>], #<simm>");
+  COMPARE(stg(x29, int imm9), "stg <Xt|SP>, [<Xn|SP>, #<simm>]!");
+  COMPARE(stz2g(x9, int imm9), "stz2g <Xt|SP>, [<Xn|SP>{, #<simm>}]");
+  COMPARE(stz2g(x28, int imm9), "stz2g <Xt|SP>, [<Xn|SP>], #<simm>");
+  COMPARE(stz2g(x7, int imm9), "stz2g <Xt|SP>, [<Xn|SP>, #<simm>]!");
+  COMPARE(stzg(x20, int imm9), "stzg <Xt|SP>, [<Xn|SP>{, #<simm>}]");
+  COMPARE(stzg(x6, int imm9), "stzg <Xt|SP>, [<Xn|SP>], #<simm>");
+  COMPARE(stzg(x28, int imm9), "stzg <Xt|SP>, [<Xn|SP>, #<simm>]!");
+#endif
+
+  CLEANUP();
+}
+
+TEST(mte_dp) {
+  SETUP();
+
+  COMPARE(addg(x26, x27, 0, 0), "addg x26, x27, #0, #0");
+  COMPARE(addg(x26, x27, 512, 2), "addg x26, x27, #512, #2");
+  COMPARE(addg(x26, x27, 1008, 15), "addg x26, x27, #1008, #15");
+  COMPARE(addg(sp, x27, 1008, 15), "addg sp, x27, #1008, #15");
+  COMPARE(addg(x26, sp, 1008, 15), "addg x26, sp, #1008, #15");
+  COMPARE(addg(sp, sp, 1008, 15), "addg sp, sp, #1008, #15");
+  COMPARE(subg(x6, x7, 0, 0), "subg x6, x7, #0, #0");
+  COMPARE(subg(x6, x7, 640, 9), "subg x6, x7, #640, #9");
+  COMPARE(subg(x6, x7, 1008, 15), "subg x6, x7, #1008, #15");
+  COMPARE(subg(sp, x7, 1008, 15), "subg sp, x7, #1008, #15");
+  COMPARE(subg(x6, sp, 1008, 15), "subg x6, sp, #1008, #15");
+  COMPARE(subg(sp, sp, 1008, 15), "subg sp, sp, #1008, #15");
+  COMPARE(gmi(x3, x5, x4), "gmi x3, x5, x4");
+  COMPARE(gmi(x3, sp, x4), "gmi x3, sp, x4");
+  COMPARE(gmi(xzr, sp, xzr), "gmi xzr, sp, xzr");
+  COMPARE(irg(x24, x23, x22), "irg x24, x23, x22");
+  COMPARE(irg(sp, x23, x22), "irg sp, x23, x22");
+  COMPARE(irg(x24, sp, x22), "irg x24, sp, x22");
+  COMPARE(irg(sp, sp, x22), "irg sp, sp, x22");
+  COMPARE(irg(x24, x23, xzr), "irg x24, x23");
+  COMPARE(irg(x24, x23), "irg x24, x23");
+  COMPARE(subp(x28, x29, x30), "subp x28, x29, x30");
+  COMPARE(subp(x28, sp, x30), "subp x28, sp, x30");
+  COMPARE(subp(x28, x29, sp), "subp x28, x29, sp");
+  COMPARE(subp(x28, sp, sp), "subp x28, sp, sp");
+  COMPARE(subp(xzr, sp, sp), "subp xzr, sp, sp");
+  COMPARE(subps(x2, x10, x0), "subps x2, x10, x0");
+  COMPARE(subps(x2, sp, x0), "subps x2, sp, x0");
+  COMPARE(subps(x2, x10, sp), "subps x2, x10, sp");
+  COMPARE(subps(x2, sp, sp), "subps x2, sp, sp");
+  COMPARE(subps(xzr, sp, sp), "cmpp sp, sp");
+  COMPARE(subps(xzr, x2, sp), "cmpp x2, sp");
+  COMPARE(cmpp(x6, x30), "cmpp x6, x30");
+
+  CLEANUP();
+}
+
+TEST(mops) {
+  SETUP();
+
+  COMPARE_MACRO(Cpyen(x4, x5, x6), "cpyen [x4]!, [x5]!, x6!");
+  COMPARE_MACRO(Cpyern(x7, x6, x1), "cpyern [x7]!, [x6]!, x1!");
+  COMPARE_MACRO(Cpyewn(x26, x27, x28), "cpyewn [x26]!, [x27]!, x28!");
+  COMPARE_MACRO(Cpye(x14, x15, x19), "cpye [x14]!, [x15]!, x19!");
+  COMPARE_MACRO(Cpyfen(x13, x1, x9), "cpyfen [x13]!, [x1]!, x9!");
+  COMPARE_MACRO(Cpyfern(x24, x2, x10), "cpyfern [x24]!, [x2]!, x10!");
+  COMPARE_MACRO(Cpyfewn(x12, x2, x11), "cpyfewn [x12]!, [x2]!, x11!");
+  COMPARE_MACRO(Cpyfe(x3, x9, x12), "cpyfe [x3]!, [x9]!, x12!");
+  COMPARE_MACRO(Cpyfmn(x7, x27, x13), "cpyfmn [x7]!, [x27]!, x13!");
+  COMPARE_MACRO(Cpyfmrn(x19, x9, x14), "cpyfmrn [x19]!, [x9]!, x14!");
+  COMPARE_MACRO(Cpyfmwn(x1, x11, x15), "cpyfmwn [x1]!, [x11]!, x15!");
+  COMPARE_MACRO(Cpyfm(x1, x13, x16), "cpyfm [x1]!, [x13]!, x16!");
+  COMPARE_MACRO(Cpyfpn(x3, x13, x17), "cpyfpn [x3]!, [x13]!, x17!");
+  COMPARE_MACRO(Cpyfprn(x18, x8, x17), "cpyfprn [x18]!, [x8]!, x17!");
+  COMPARE_MACRO(Cpyfpwn(x9, x29, x18), "cpyfpwn [x9]!, [x29]!, x18!");
+  COMPARE_MACRO(Cpyfp(x4, x3, x19), "cpyfp [x4]!, [x3]!, x19!");
+  COMPARE_MACRO(Cpymn(x5, x15, x20), "cpymn [x5]!, [x15]!, x20!");
+  COMPARE_MACRO(Cpymrn(x12, x22, x21), "cpymrn [x12]!, [x22]!, x21!");
+  COMPARE_MACRO(Cpymwn(x12, x1, x22), "cpymwn [x12]!, [x1]!, x22!");
+  COMPARE_MACRO(Cpym(x1, x10, x23), "cpym [x1]!, [x10]!, x23!");
+  COMPARE_MACRO(Cpypn(x3, x26, x25), "cpypn [x3]!, [x26]!, x25!");
+  COMPARE_MACRO(Cpyprn(x4, x14, x24), "cpyprn [x4]!, [x14]!, x24!");
+  COMPARE_MACRO(Cpypwn(x9, x29, x26), "cpypwn [x9]!, [x29]!, x26!");
+  COMPARE_MACRO(Cpyp(x0, x30, x28), "cpyp [x0]!, [x30]!, x28!");
+
+  COMPARE_MACRO(Seten(x6, x26, x27), "seten [x6]!, x26!, x27");
+  COMPARE_MACRO(Sete(x3, x23, x1), "sete [x3]!, x23!, x1");
+  COMPARE_MACRO(Setgen(x6, x16, x2), "setgen [x6]!, x16!, x2");
+  COMPARE_MACRO(Setge(x4, x24, x3), "setge [x4]!, x24!, x3");
+  COMPARE_MACRO(Setgmn(x9, x29, x4), "setgmn [x9]!, x29!, x4");
+  COMPARE_MACRO(Setgm(x30, x3, x5), "setgm [x30]!, x3!, x5");
+  COMPARE_MACRO(Setgpn(x11, x1, x6), "setgpn [x11]!, x1!, x6");
+  COMPARE_MACRO(Setgp(x1, x16, x7), "setgp [x1]!, x16!, x7");
+  COMPARE_MACRO(Setmn(x4, x14, x8), "setmn [x4]!, x14!, x8");
+  COMPARE_MACRO(Setm(x8, x7, x9), "setm [x8]!, x7!, x9");
+  COMPARE_MACRO(Setpn(x2, x22, x10), "setpn [x2]!, x22!, x10");
+  COMPARE_MACRO(Setp(x7, x17, x11), "setp [x7]!, x17!, x11");
+
+  // Check unallocated bit patterns.
+  COMPARE_PREFIX(dci(0x1d000422), "cpyp [x2]!, [x0]!, x1!");
+  COMPARE_PREFIX(dci(0xdd000422), "unallocated");  // sz != 0
+  COMPARE_PREFIX(dci(0x1d000442), "unallocated");  // Xd == Xn
+  COMPARE_PREFIX(dci(0x1d020422), "unallocated");  // Xd == Xs
+  COMPARE_PREFIX(dci(0x1d000402), "unallocated");  // Xn == Xs
+  COMPARE_PREFIX(dci(0x1d00043f), "unallocated");  // Xd == 31
+  COMPARE_PREFIX(dci(0x1d0007e2), "unallocated");  // Xn == 31
+  COMPARE_PREFIX(dci(0x1d1f0422), "unallocated");  // Xs == 31
+
+  COMPARE_PREFIX(dci(0x19c02424), "setpn [x4]!, x1!, x0");
+  COMPARE_PREFIX(dci(0xd9c02424), "unallocated");  // sz != 0
+  COMPARE_PREFIX(dci(0x19c0e424), "unallocated");  // op2 == 0xe
+  COMPARE_PREFIX(dci(0x19c02400), "unallocated");  // Xd == Xn
+  COMPARE_PREFIX(dci(0x19c02420), "unallocated");  // Xd == Xs
+  COMPARE_PREFIX(dci(0x19c02404), "unallocated");  // Xn == Xs
+  COMPARE_PREFIX(dci(0x19c0243f), "unallocated");  // Xd == 31
+  COMPARE_PREFIX(dci(0x19c027e4), "unallocated");  // Xn == 31
+
+  CLEANUP();
+}
+
+TEST(architecture_features) {
+  SETUP();
+
+  // ARMv8.1 - LOR
+  COMPARE_PREFIX(dci(0x08800000), "stllrb");  // STLLRB_SL32_ldstexcl
+  COMPARE_PREFIX(dci(0x08c00000), "ldlarb");  // LDLARB_LR32_ldstexcl
+  COMPARE_PREFIX(dci(0x48800000), "stllrh");  // STLLRH_SL32_ldstexcl
+  COMPARE_PREFIX(dci(0x48c00000), "ldlarh");  // LDLARH_LR32_ldstexcl
+  COMPARE_PREFIX(dci(0x88800000), "stllr");   // STLLR_SL32_ldstexcl
+  COMPARE_PREFIX(dci(0x88c00000), "ldlar");   // LDLAR_LR32_ldstexcl
+  COMPARE_PREFIX(dci(0xc8800000), "stllr");   // STLLR_SL64_ldstexcl
+  COMPARE_PREFIX(dci(0xc8c00000), "ldlar");   // LDLAR_LR64_ldstexcl
+
+  // ARMv8.1 - LSE
+  COMPARE_PREFIX(dci(0x08207c00), "casp");       // CASP_CP32_ldstexcl
+  COMPARE_PREFIX(dci(0x0820fc00), "caspl");      // CASPL_CP32_ldstexcl
+  COMPARE_PREFIX(dci(0x08607c00), "caspa");      // CASPA_CP32_ldstexcl
+  COMPARE_PREFIX(dci(0x0860fc00), "caspal");     // CASPAL_CP32_ldstexcl
+  COMPARE_PREFIX(dci(0x08a07c00), "casb");       // CASB_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x08a0fc00), "caslb");      // CASLB_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x08e07c00), "casab");      // CASAB_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x08e0fc00), "casalb");     // CASALB_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x38200000), "ldaddb");     // LDADDB_32_memop
+  COMPARE_PREFIX(dci(0x38201000), "ldclrb");     // LDCLRB_32_memop
+  COMPARE_PREFIX(dci(0x38202000), "ldeorb");     // LDEORB_32_memop
+  COMPARE_PREFIX(dci(0x38203000), "ldsetb");     // LDSETB_32_memop
+  COMPARE_PREFIX(dci(0x38204000), "ldsmaxb");    // LDSMAXB_32_memop
+  COMPARE_PREFIX(dci(0x38205000), "ldsminb");    // LDSMINB_32_memop
+  COMPARE_PREFIX(dci(0x38206000), "ldumaxb");    // LDUMAXB_32_memop
+  COMPARE_PREFIX(dci(0x38207000), "lduminb");    // LDUMINB_32_memop
+  COMPARE_PREFIX(dci(0x38208000), "swpb");       // SWPB_32_memop
+  COMPARE_PREFIX(dci(0x38600000), "ldaddlb");    // LDADDLB_32_memop
+  COMPARE_PREFIX(dci(0x38601000), "ldclrlb");    // LDCLRLB_32_memop
+  COMPARE_PREFIX(dci(0x38602000), "ldeorlb");    // LDEORLB_32_memop
+  COMPARE_PREFIX(dci(0x38603000), "ldsetlb");    // LDSETLB_32_memop
+  COMPARE_PREFIX(dci(0x38604000), "ldsmaxlb");   // LDSMAXLB_32_memop
+  COMPARE_PREFIX(dci(0x38605000), "ldsminlb");   // LDSMINLB_32_memop
+  COMPARE_PREFIX(dci(0x38606000), "ldumaxlb");   // LDUMAXLB_32_memop
+  COMPARE_PREFIX(dci(0x38607000), "lduminlb");   // LDUMINLB_32_memop
+  COMPARE_PREFIX(dci(0x38608000), "swplb");      // SWPLB_32_memop
+  COMPARE_PREFIX(dci(0x38a00000), "ldaddab");    // LDADDAB_32_memop
+  COMPARE_PREFIX(dci(0x38a01000), "ldclrab");    // LDCLRAB_32_memop
+  COMPARE_PREFIX(dci(0x38a02000), "ldeorab");    // LDEORAB_32_memop
+  COMPARE_PREFIX(dci(0x38a03000), "ldsetab");    // LDSETAB_32_memop
+  COMPARE_PREFIX(dci(0x38a04000), "ldsmaxab");   // LDSMAXAB_32_memop
+  COMPARE_PREFIX(dci(0x38a05000), "ldsminab");   // LDSMINAB_32_memop
+  COMPARE_PREFIX(dci(0x38a06000), "ldumaxab");   // LDUMAXAB_32_memop
+  COMPARE_PREFIX(dci(0x38a07000), "lduminab");   // LDUMINAB_32_memop
+  COMPARE_PREFIX(dci(0x38a08000), "swpab");      // SWPAB_32_memop
+  COMPARE_PREFIX(dci(0x38e00000), "ldaddalb");   // LDADDALB_32_memop
+  COMPARE_PREFIX(dci(0x38e01000), "ldclralb");   // LDCLRALB_32_memop
+  COMPARE_PREFIX(dci(0x38e02000), "ldeoralb");   // LDEORALB_32_memop
+  COMPARE_PREFIX(dci(0x38e03000), "ldsetalb");   // LDSETALB_32_memop
+  COMPARE_PREFIX(dci(0x38e04000), "ldsmaxalb");  // LDSMAXALB_32_memop
+  COMPARE_PREFIX(dci(0x38e05000), "ldsminalb");  // LDSMINALB_32_memop
+  COMPARE_PREFIX(dci(0x38e06000), "ldumaxalb");  // LDUMAXALB_32_memop
+  COMPARE_PREFIX(dci(0x38e07000), "lduminalb");  // LDUMINALB_32_memop
+  COMPARE_PREFIX(dci(0x38e08000), "swpalb");     // SWPALB_32_memop
+  COMPARE_PREFIX(dci(0x48207c00), "casp");       // CASP_CP64_ldstexcl
+  COMPARE_PREFIX(dci(0x4820fc00), "caspl");      // CASPL_CP64_ldstexcl
+  COMPARE_PREFIX(dci(0x48607c00), "caspa");      // CASPA_CP64_ldstexcl
+  COMPARE_PREFIX(dci(0x4860fc00), "caspal");     // CASPAL_CP64_ldstexcl
+  COMPARE_PREFIX(dci(0x48a07c00), "cash");       // CASH_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x48a0fc00), "caslh");      // CASLH_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x48e07c00), "casah");      // CASAH_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x48e0fc00), "casalh");     // CASALH_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x78200000), "ldaddh");     // LDADDH_32_memop
+  COMPARE_PREFIX(dci(0x78201000), "ldclrh");     // LDCLRH_32_memop
+  COMPARE_PREFIX(dci(0x78202000), "ldeorh");     // LDEORH_32_memop
+  COMPARE_PREFIX(dci(0x78203000), "ldseth");     // LDSETH_32_memop
+  COMPARE_PREFIX(dci(0x78204000), "ldsmaxh");    // LDSMAXH_32_memop
+  COMPARE_PREFIX(dci(0x78205000), "ldsminh");    // LDSMINH_32_memop
+  COMPARE_PREFIX(dci(0x78206000), "ldumaxh");    // LDUMAXH_32_memop
+  COMPARE_PREFIX(dci(0x78207000), "lduminh");    // LDUMINH_32_memop
+  COMPARE_PREFIX(dci(0x78208000), "swph");       // SWPH_32_memop
+  COMPARE_PREFIX(dci(0x78600000), "ldaddlh");    // LDADDLH_32_memop
+  COMPARE_PREFIX(dci(0x78601000), "ldclrlh");    // LDCLRLH_32_memop
+  COMPARE_PREFIX(dci(0x78602000), "ldeorlh");    // LDEORLH_32_memop
+  COMPARE_PREFIX(dci(0x78603000), "ldsetlh");    // LDSETLH_32_memop
+  COMPARE_PREFIX(dci(0x78604000), "ldsmaxlh");   // LDSMAXLH_32_memop
+  COMPARE_PREFIX(dci(0x78605000), "ldsminlh");   // LDSMINLH_32_memop
+  COMPARE_PREFIX(dci(0x78606000), "ldumaxlh");   // LDUMAXLH_32_memop
+  COMPARE_PREFIX(dci(0x78607000), "lduminlh");   // LDUMINLH_32_memop
+  COMPARE_PREFIX(dci(0x78608000), "swplh");      // SWPLH_32_memop
+  COMPARE_PREFIX(dci(0x78a00000), "ldaddah");    // LDADDAH_32_memop
+  COMPARE_PREFIX(dci(0x78a01000), "ldclrah");    // LDCLRAH_32_memop
+  COMPARE_PREFIX(dci(0x78a02000), "ldeorah");    // LDEORAH_32_memop
+  COMPARE_PREFIX(dci(0x78a03000), "ldsetah");    // LDSETAH_32_memop
+  COMPARE_PREFIX(dci(0x78a04000), "ldsmaxah");   // LDSMAXAH_32_memop
+  COMPARE_PREFIX(dci(0x78a05000), "ldsminah");   // LDSMINAH_32_memop
+  COMPARE_PREFIX(dci(0x78a06000), "ldumaxah");   // LDUMAXAH_32_memop
+  COMPARE_PREFIX(dci(0x78a07000), "lduminah");   // LDUMINAH_32_memop
+  COMPARE_PREFIX(dci(0x78a08000), "swpah");      // SWPAH_32_memop
+  COMPARE_PREFIX(dci(0x78e00000), "ldaddalh");   // LDADDALH_32_memop
+  COMPARE_PREFIX(dci(0x78e01000), "ldclralh");   // LDCLRALH_32_memop
+  COMPARE_PREFIX(dci(0x78e02000), "ldeoralh");   // LDEORALH_32_memop
+  COMPARE_PREFIX(dci(0x78e03000), "ldsetalh");   // LDSETALH_32_memop
+  COMPARE_PREFIX(dci(0x78e04000), "ldsmaxalh");  // LDSMAXALH_32_memop
+  COMPARE_PREFIX(dci(0x78e05000), "ldsminalh");  // LDSMINALH_32_memop
+  COMPARE_PREFIX(dci(0x78e06000), "ldumaxalh");  // LDUMAXALH_32_memop
+  COMPARE_PREFIX(dci(0x78e07000), "lduminalh");  // LDUMINALH_32_memop
+  COMPARE_PREFIX(dci(0x78e08000), "swpalh");     // SWPALH_32_memop
+  COMPARE_PREFIX(dci(0x88a07c00), "cas");        // CAS_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x88a0fc00), "casl");       // CASL_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x88e07c00), "casa");       // CASA_C32_ldstexcl
+  COMPARE_PREFIX(dci(0x88e0fc00), "casal");      // CASAL_C32_ldstexcl
+  COMPARE_PREFIX(dci(0xb8200000), "ldadd");      // LDADD_32_memop
+  COMPARE_PREFIX(dci(0xb8201000), "ldclr");      // LDCLR_32_memop
+  COMPARE_PREFIX(dci(0xb8202000), "ldeor");      // LDEOR_32_memop
+  COMPARE_PREFIX(dci(0xb8203000), "ldset");      // LDSET_32_memop
+  COMPARE_PREFIX(dci(0xb8204000), "ldsmax");     // LDSMAX_32_memop
+  COMPARE_PREFIX(dci(0xb8205000), "ldsmin");     // LDSMIN_32_memop
+  COMPARE_PREFIX(dci(0xb8206000), "ldumax");     // LDUMAX_32_memop
+  COMPARE_PREFIX(dci(0xb8207000), "ldumin");     // LDUMIN_32_memop
+  COMPARE_PREFIX(dci(0xb8208000), "swp");        // SWP_32_memop
+  COMPARE_PREFIX(dci(0xb8600000), "ldaddl");     // LDADDL_32_memop
+  COMPARE_PREFIX(dci(0xb8601000), "ldclrl");     // LDCLRL_32_memop
+  COMPARE_PREFIX(dci(0xb8602000), "ldeorl");     // LDEORL_32_memop
+  COMPARE_PREFIX(dci(0xb8603000), "ldsetl");     // LDSETL_32_memop
+  COMPARE_PREFIX(dci(0xb8604000), "ldsmaxl");    // LDSMAXL_32_memop
+  COMPARE_PREFIX(dci(0xb8605000), "ldsminl");    // LDSMINL_32_memop
+  COMPARE_PREFIX(dci(0xb8606000), "ldumaxl");    // LDUMAXL_32_memop
+  COMPARE_PREFIX(dci(0xb8607000), "lduminl");    // LDUMINL_32_memop
+  COMPARE_PREFIX(dci(0xb8608000), "swpl");       // SWPL_32_memop
+  COMPARE_PREFIX(dci(0xb8a00000), "ldadda");     // LDADDA_32_memop
+  COMPARE_PREFIX(dci(0xb8a01000), "ldclra");     // LDCLRA_32_memop
+  COMPARE_PREFIX(dci(0xb8a02000), "ldeora");     // LDEORA_32_memop
+  COMPARE_PREFIX(dci(0xb8a03000), "ldseta");     // LDSETA_32_memop
+  COMPARE_PREFIX(dci(0xb8a04000), "ldsmaxa");    // LDSMAXA_32_memop
+  COMPARE_PREFIX(dci(0xb8a05000), "ldsmina");    // LDSMINA_32_memop
+  COMPARE_PREFIX(dci(0xb8a06000), "ldumaxa");    // LDUMAXA_32_memop
+  COMPARE_PREFIX(dci(0xb8a07000), "ldumina");    // LDUMINA_32_memop
+  COMPARE_PREFIX(dci(0xb8a08000), "swpa");       // SWPA_32_memop
+  COMPARE_PREFIX(dci(0xb8e00000), "ldaddal");    // LDADDAL_32_memop
+  COMPARE_PREFIX(dci(0xb8e01000), "ldclral");    // LDCLRAL_32_memop
+  COMPARE_PREFIX(dci(0xb8e02000), "ldeoral");    // LDEORAL_32_memop
+  COMPARE_PREFIX(dci(0xb8e03000), "ldsetal");    // LDSETAL_32_memop
+  COMPARE_PREFIX(dci(0xb8e04000), "ldsmaxal");   // LDSMAXAL_32_memop
+  COMPARE_PREFIX(dci(0xb8e05000), "ldsminal");   // LDSMINAL_32_memop
+  COMPARE_PREFIX(dci(0xb8e06000), "ldumaxal");   // LDUMAXAL_32_memop
+  COMPARE_PREFIX(dci(0xb8e07000), "lduminal");   // LDUMINAL_32_memop
+  COMPARE_PREFIX(dci(0xb8e08000), "swpal");      // SWPAL_32_memop
+  COMPARE_PREFIX(dci(0xc8a07c00), "cas");        // CAS_C64_ldstexcl
+  COMPARE_PREFIX(dci(0xc8a0fc00), "casl");       // CASL_C64_ldstexcl
+  COMPARE_PREFIX(dci(0xc8e07c00), "casa");       // CASA_C64_ldstexcl
+  COMPARE_PREFIX(dci(0xc8e0fc00), "casal");      // CASAL_C64_ldstexcl
+  COMPARE_PREFIX(dci(0xf8200000), "ldadd");      // LDADD_64_memop
+  COMPARE_PREFIX(dci(0xf8201000), "ldclr");      // LDCLR_64_memop
+  COMPARE_PREFIX(dci(0xf8202000), "ldeor");      // LDEOR_64_memop
+  COMPARE_PREFIX(dci(0xf8203000), "ldset");      // LDSET_64_memop
+  COMPARE_PREFIX(dci(0xf8204000), "ldsmax");     // LDSMAX_64_memop
+  COMPARE_PREFIX(dci(0xf8205000), "ldsmin");     // LDSMIN_64_memop
+  COMPARE_PREFIX(dci(0xf8206000), "ldumax");     // LDUMAX_64_memop
+  COMPARE_PREFIX(dci(0xf8207000), "ldumin");     // LDUMIN_64_memop
+  COMPARE_PREFIX(dci(0xf8208000), "swp");        // SWP_64_memop
+  COMPARE_PREFIX(dci(0xf8600000), "ldaddl");     // LDADDL_64_memop
+  COMPARE_PREFIX(dci(0xf8601000), "ldclrl");     // LDCLRL_64_memop
+  COMPARE_PREFIX(dci(0xf8602000), "ldeorl");     // LDEORL_64_memop
+  COMPARE_PREFIX(dci(0xf8603000), "ldsetl");     // LDSETL_64_memop
+  COMPARE_PREFIX(dci(0xf8604000), "ldsmaxl");    // LDSMAXL_64_memop
+  COMPARE_PREFIX(dci(0xf8605000), "ldsminl");    // LDSMINL_64_memop
+  COMPARE_PREFIX(dci(0xf8606000), "ldumaxl");    // LDUMAXL_64_memop
+  COMPARE_PREFIX(dci(0xf8607000), "lduminl");    // LDUMINL_64_memop
+  COMPARE_PREFIX(dci(0xf8608000), "swpl");       // SWPL_64_memop
+  COMPARE_PREFIX(dci(0xf8a00000), "ldadda");     // LDADDA_64_memop
+  COMPARE_PREFIX(dci(0xf8a01000), "ldclra");     // LDCLRA_64_memop
+  COMPARE_PREFIX(dci(0xf8a02000), "ldeora");     // LDEORA_64_memop
+  COMPARE_PREFIX(dci(0xf8a03000), "ldseta");     // LDSETA_64_memop
+  COMPARE_PREFIX(dci(0xf8a04000), "ldsmaxa");    // LDSMAXA_64_memop
+  COMPARE_PREFIX(dci(0xf8a05000), "ldsmina");    // LDSMINA_64_memop
+  COMPARE_PREFIX(dci(0xf8a06000), "ldumaxa");    // LDUMAXA_64_memop
+  COMPARE_PREFIX(dci(0xf8a07000), "ldumina");    // LDUMINA_64_memop
+  COMPARE_PREFIX(dci(0xf8a08000), "swpa");       // SWPA_64_memop
+  COMPARE_PREFIX(dci(0xf8e00000), "ldaddal");    // LDADDAL_64_memop
+  COMPARE_PREFIX(dci(0xf8e01000), "ldclral");    // LDCLRAL_64_memop
+  COMPARE_PREFIX(dci(0xf8e02000), "ldeoral");    // LDEORAL_64_memop
+  COMPARE_PREFIX(dci(0xf8e03000), "ldsetal");    // LDSETAL_64_memop
+  COMPARE_PREFIX(dci(0xf8e04000), "ldsmaxal");   // LDSMAXAL_64_memop
+  COMPARE_PREFIX(dci(0xf8e05000), "ldsminal");   // LDSMINAL_64_memop
+  COMPARE_PREFIX(dci(0xf8e06000), "ldumaxal");   // LDUMAXAL_64_memop
+  COMPARE_PREFIX(dci(0xf8e07000), "lduminal");   // LDUMINAL_64_memop
+  COMPARE_PREFIX(dci(0xf8e08000), "swpal");      // SWPAL_64_memop
+
+  // ARMv8.1 - RDM
+  COMPARE_PREFIX(dci(0x2e008400), "sqrdmlah");  // SQRDMLAH_asimdsame2_only
+  COMPARE_PREFIX(dci(0x2e008c00), "sqrdmlsh");  // SQRDMLSH_asimdsame2_only
+  COMPARE_PREFIX(dci(0x2f40d000), "sqrdmlah");  // SQRDMLAH_asimdelem_R
+  COMPARE_PREFIX(dci(0x2f40f000), "sqrdmlsh");  // SQRDMLSH_asimdelem_R
+  COMPARE_PREFIX(dci(0x7e008400), "sqrdmlah");  // SQRDMLAH_asisdsame2_only
+  COMPARE_PREFIX(dci(0x7e008c00), "sqrdmlsh");  // SQRDMLSH_asisdsame2_only
+  COMPARE_PREFIX(dci(0x7f40d000), "sqrdmlah");  // SQRDMLAH_asisdelem_R
+  COMPARE_PREFIX(dci(0x7f40f000), "sqrdmlsh");  // SQRDMLSH_asisdelem_R
+
+  // ARMv8.2 - DotProd
+  COMPARE_PREFIX(dci(0x0e009400), "sdot");  // SDOT_asimdsame2_D
+  COMPARE_PREFIX(dci(0x0f00e000), "sdot");  // SDOT_asimdelem_D
+  COMPARE_PREFIX(dci(0x2e009400), "udot");  // UDOT_asimdsame2_D
+  COMPARE_PREFIX(dci(0x2f00e000), "udot");  // UDOT_asimdelem_D
+
+  // ARMv8.2 - FHM
+  COMPARE_PREFIX(dci(0x0e20ec00), "fmlal");   // FMLAL_asimdsame_F
+  COMPARE_PREFIX(dci(0x0ea0ec00), "fmlsl");   // FMLSL_asimdsame_F
+  COMPARE_PREFIX(dci(0x0f800000), "fmlal");   // FMLAL_asimdelem_LH
+  COMPARE_PREFIX(dci(0x0f804000), "fmlsl");   // FMLSL_asimdelem_LH
+  COMPARE_PREFIX(dci(0x2e20cc00), "fmlal2");  // FMLAL2_asimdsame_F
+  COMPARE_PREFIX(dci(0x2ea0cc00), "fmlsl2");  // FMLSL2_asimdsame_F
+  COMPARE_PREFIX(dci(0x2f808000), "fmlal2");  // FMLAL2_asimdelem_LH
+  COMPARE_PREFIX(dci(0x2f80c000), "fmlsl2");  // FMLSL2_asimdelem_LH
+
+  // ARMv8.2 - FP16
+  COMPARE_PREFIX(dci(0x0e20c400), "fmaxnm");   // FMAXNM_asimdsame_only
+  COMPARE_PREFIX(dci(0x0e20cc00), "fmla");     // FMLA_asimdsame_only
+  COMPARE_PREFIX(dci(0x0e20d400), "fadd");     // FADD_asimdsame_only
+  COMPARE_PREFIX(dci(0x0e20dc00), "fmulx");    // FMULX_asimdsame_only
+  COMPARE_PREFIX(dci(0x0e20e400), "fcmeq");    // FCMEQ_asimdsame_only
+  COMPARE_PREFIX(dci(0x0e20f400), "fmax");     // FMAX_asimdsame_only
+  COMPARE_PREFIX(dci(0x0e20fc00), "frecps");   // FRECPS_asimdsame_only
+  COMPARE_PREFIX(dci(0x0e218800), "frintn");   // FRINTN_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0e219800), "frintm");   // FRINTM_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0e21a800), "fcvtns");   // FCVTNS_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0e21b800), "fcvtms");   // FCVTMS_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0e21c800), "fcvtas");   // FCVTAS_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0e21d800), "scvtf");    // SCVTF_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0e30c800), "fmaxnmv");  // FMAXNMV_asimdall_only_H
+  COMPARE_PREFIX(dci(0x0e30f800), "fmaxv");    // FMAXV_asimdall_only_H
+  COMPARE_PREFIX(dci(0x0e400400), "fmaxnm");   // FMAXNM_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0e400c00), "fmla");     // FMLA_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0e401400), "fadd");     // FADD_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0e401c00), "fmulx");    // FMULX_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0e402400), "fcmeq");    // FCMEQ_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0e403400), "fmax");     // FMAX_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0e403c00), "frecps");   // FRECPS_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0e798800), "frintn");   // FRINTN_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0e799800), "frintm");   // FRINTM_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0e79a800), "fcvtns");   // FCVTNS_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0e79b800), "fcvtms");   // FCVTMS_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0e79c800), "fcvtas");   // FCVTAS_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0e79d800), "scvtf");    // SCVTF_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0ea0c400), "fminnm");   // FMINNM_asimdsame_only
+  COMPARE_PREFIX(dci(0x0ea0cc00), "fmls");     // FMLS_asimdsame_only
+  COMPARE_PREFIX(dci(0x0ea0d400), "fsub");     // FSUB_asimdsame_only
+  COMPARE_PREFIX(dci(0x0ea0f400), "fmin");     // FMIN_asimdsame_only
+  COMPARE_PREFIX(dci(0x0ea0fc00), "frsqrts");  // FRSQRTS_asimdsame_only
+  COMPARE_PREFIX(dci(0x0ea0c800), "fcmgt");    // FCMGT_asimdmisc_FZ
+  COMPARE_PREFIX(dci(0x0ea0d800), "fcmeq");    // FCMEQ_asimdmisc_FZ
+  COMPARE_PREFIX(dci(0x0ea0e800), "fcmlt");    // FCMLT_asimdmisc_FZ
+  COMPARE_PREFIX(dci(0x0ea0f800), "fabs");     // FABS_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0ea18800), "frintp");   // FRINTP_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0ea19800), "frintz");   // FRINTZ_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0ea1a800), "fcvtps");   // FCVTPS_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0ea1b800), "fcvtzs");   // FCVTZS_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0ea1d800), "frecpe");   // FRECPE_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0eb0c800), "fminnmv");  // FMINNMV_asimdall_only_H
+  COMPARE_PREFIX(dci(0x0eb0f800), "fminv");    // FMINV_asimdall_only_H
+  COMPARE_PREFIX(dci(0x0ec00400), "fminnm");   // FMINNM_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0ec00c00), "fmls");     // FMLS_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0ec01400), "fsub");     // FSUB_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0ec03400), "fmin");     // FMIN_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0ec03c00), "frsqrts");  // FRSQRTS_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x0ef8c800), "fcmgt");    // FCMGT_asimdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x0ef8d800), "fcmeq");    // FCMEQ_asimdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x0ef8e800), "fcmlt");    // FCMLT_asimdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x0ef8f800), "fabs");     // FABS_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0ef98800), "frintp");   // FRINTP_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0ef99800), "frintz");   // FRINTZ_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0ef9a800), "fcvtps");   // FCVTPS_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0ef9b800), "fcvtzs");   // FCVTZS_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0ef9d800), "frecpe");   // FRECPE_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x0f001000), "fmla");     // FMLA_asimdelem_RH_H
+  COMPARE_PREFIX(dci(0x0f005000), "fmls");     // FMLS_asimdelem_RH_H
+  COMPARE_PREFIX(dci(0x0f009000), "fmul");     // FMUL_asimdelem_RH_H
+  COMPARE_PREFIX(dci(0x0f00f400), "fmov");     // FMOV_asimdimm_S_s
+  COMPARE_PREFIX(dci(0x0f00fc00), "fmov");     // FMOV_asimdimm_H_h
+  COMPARE_PREFIX(dci(0x0f801000), "fmla");     // FMLA_asimdelem_R_SD
+  COMPARE_PREFIX(dci(0x0f805000), "fmls");     // FMLS_asimdelem_R_SD
+  COMPARE_PREFIX(dci(0x0f809000), "fmul");     // FMUL_asimdelem_R_SD
+  COMPARE_PREFIX(dci(0x2e20c400), "fmaxnmp");  // FMAXNMP_asimdsame_only
+  COMPARE_PREFIX(dci(0x2e20d400), "faddp");    // FADDP_asimdsame_only
+  COMPARE_PREFIX(dci(0x2e20dc00), "fmul");     // FMUL_asimdsame_only
+  COMPARE_PREFIX(dci(0x2e20e400), "fcmge");    // FCMGE_asimdsame_only
+  COMPARE_PREFIX(dci(0x2e20ec00), "facge");    // FACGE_asimdsame_only
+  COMPARE_PREFIX(dci(0x2e20f400), "fmaxp");    // FMAXP_asimdsame_only
+  COMPARE_PREFIX(dci(0x2e20fc00), "fdiv");     // FDIV_asimdsame_only
+  COMPARE_PREFIX(dci(0x2e218800), "frinta");   // FRINTA_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2e219800), "frintx");   // FRINTX_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2e21a800), "fcvtnu");   // FCVTNU_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2e21b800), "fcvtmu");   // FCVTMU_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2e21c800), "fcvtau");   // FCVTAU_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2e21d800), "ucvtf");    // UCVTF_asimdmisc_R
+  COMPARE_PREFIX(dci(0x6e30c800), "fmaxnmv");  // FMAXNMV_asimdall_only_SD
+  COMPARE_PREFIX(dci(0x6e30f800), "fmaxv");    // FMAXV_asimdall_only_SD
+  COMPARE_PREFIX(dci(0x2e400400), "fmaxnmp");  // FMAXNMP_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2e401400), "faddp");    // FADDP_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2e401c00), "fmul");     // FMUL_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2e402400), "fcmge");    // FCMGE_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2e402c00), "facge");    // FACGE_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2e403400), "fmaxp");    // FMAXP_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2e403c00), "fdiv");     // FDIV_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2e798800), "frinta");   // FRINTA_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2e799800), "frintx");   // FRINTX_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2e79a800), "fcvtnu");   // FCVTNU_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2e79b800), "fcvtmu");   // FCVTMU_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2e79c800), "fcvtau");   // FCVTAU_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2e79d800), "ucvtf");    // UCVTF_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2ea0c400), "fminnmp");  // FMINNMP_asimdsame_only
+  COMPARE_PREFIX(dci(0x2ea0d400), "fabd");     // FABD_asimdsame_only
+  COMPARE_PREFIX(dci(0x2ea0e400), "fcmgt");    // FCMGT_asimdsame_only
+  COMPARE_PREFIX(dci(0x2ea0ec00), "facgt");    // FACGT_asimdsame_only
+  COMPARE_PREFIX(dci(0x2ea0f400), "fminp");    // FMINP_asimdsame_only
+  COMPARE_PREFIX(dci(0x2ea0c800), "fcmge");    // FCMGE_asimdmisc_FZ
+  COMPARE_PREFIX(dci(0x2ea0d800), "fcmle");    // FCMLE_asimdmisc_FZ
+  COMPARE_PREFIX(dci(0x2ea0f800), "fneg");     // FNEG_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2ea19800), "frinti");   // FRINTI_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2ea1a800), "fcvtpu");   // FCVTPU_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2ea1b800), "fcvtzu");   // FCVTZU_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2ea1d800), "frsqrte");  // FRSQRTE_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2ea1f800), "fsqrt");    // FSQRT_asimdmisc_R
+  COMPARE_PREFIX(dci(0x6eb0c800), "fminnmv");  // FMINNMV_asimdall_only_SD
+  COMPARE_PREFIX(dci(0x6eb0f800), "fminv");    // FMINV_asimdall_only_SD
+  COMPARE_PREFIX(dci(0x2ec00400), "fminnmp");  // FMINNMP_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2ec01400), "fabd");     // FABD_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2ec02400), "fcmgt");    // FCMGT_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2ec02c00), "facgt");    // FACGT_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2ec03400), "fminp");    // FMINP_asimdsamefp16_only
+  COMPARE_PREFIX(dci(0x2ef8c800), "fcmge");    // FCMGE_asimdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x2ef8d800), "fcmle");    // FCMLE_asimdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x2ef8f800), "fneg");     // FNEG_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2ef99800), "frinti");   // FRINTI_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2ef9a800), "fcvtpu");   // FCVTPU_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2ef9b800), "fcvtzu");   // FCVTZU_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2ef9d800), "frsqrte");  // FRSQRTE_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2ef9f800), "fsqrt");    // FSQRT_asimdmiscfp16_R
+  COMPARE_PREFIX(dci(0x2f009000), "fmulx");    // FMULX_asimdelem_RH_H
+  COMPARE_PREFIX(dci(0x2f809000), "fmulx");    // FMULX_asimdelem_R_SD
+  COMPARE_PREFIX(dci(0x5e20dc00), "fmulx");    // FMULX_asisdsame_only
+  COMPARE_PREFIX(dci(0x5e20e400), "fcmeq");    // FCMEQ_asisdsame_only
+  COMPARE_PREFIX(dci(0x5e20fc00), "frecps");   // FRECPS_asisdsame_only
+  COMPARE_PREFIX(dci(0x5e21a800), "fcvtns");   // FCVTNS_asisdmisc_R
+  COMPARE_PREFIX(dci(0x5e21b800), "fcvtms");   // FCVTMS_asisdmisc_R
+  COMPARE_PREFIX(dci(0x5e21c800), "fcvtas");   // FCVTAS_asisdmisc_R
+  COMPARE_PREFIX(dci(0x5e21d800), "scvtf");    // SCVTF_asisdmisc_R
+  COMPARE_PREFIX(dci(0x5e30c800), "fmaxnmp");  // FMAXNMP_asisdpair_only_H
+  COMPARE_PREFIX(dci(0x5e30d800), "faddp");    // FADDP_asisdpair_only_H
+  COMPARE_PREFIX(dci(0x5e30f800), "fmaxp");    // FMAXP_asisdpair_only_H
+  COMPARE_PREFIX(dci(0x5e401c00), "fmulx");    // FMULX_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x5e402400), "fcmeq");    // FCMEQ_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x5e403c00), "frecps");   // FRECPS_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x5e79a800), "fcvtns");   // FCVTNS_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x5e79b800), "fcvtms");   // FCVTMS_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x5e79c800), "fcvtas");   // FCVTAS_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x5e79d800), "scvtf");    // SCVTF_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x5ea0fc00), "frsqrts");  // FRSQRTS_asisdsame_only
+  COMPARE_PREFIX(dci(0x5ea0c800), "fcmgt");    // FCMGT_asisdmisc_FZ
+  COMPARE_PREFIX(dci(0x5ea0d800), "fcmeq");    // FCMEQ_asisdmisc_FZ
+  COMPARE_PREFIX(dci(0x5ea0e800), "fcmlt");    // FCMLT_asisdmisc_FZ
+  COMPARE_PREFIX(dci(0x5ea1a800), "fcvtps");   // FCVTPS_asisdmisc_R
+  COMPARE_PREFIX(dci(0x5ea1b800), "fcvtzs");   // FCVTZS_asisdmisc_R
+  COMPARE_PREFIX(dci(0x5ea1d800), "frecpe");   // FRECPE_asisdmisc_R
+  COMPARE_PREFIX(dci(0x5ea1f800), "frecpx");   // FRECPX_asisdmisc_R
+  COMPARE_PREFIX(dci(0x5eb0c800), "fminnmp");  // FMINNMP_asisdpair_only_H
+  COMPARE_PREFIX(dci(0x5eb0f800), "fminp");    // FMINP_asisdpair_only_H
+  COMPARE_PREFIX(dci(0x5ec03c00), "frsqrts");  // FRSQRTS_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x5ef8c800), "fcmgt");    // FCMGT_asisdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x5ef8d800), "fcmeq");    // FCMEQ_asisdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x5ef8e800), "fcmlt");    // FCMLT_asisdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x5ef9a800), "fcvtps");   // FCVTPS_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x5ef9b800), "fcvtzs");   // FCVTZS_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x5ef9d800), "frecpe");   // FRECPE_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x5ef9f800), "frecpx");   // FRECPX_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x5f001000), "fmla");     // FMLA_asisdelem_RH_H
+  COMPARE_PREFIX(dci(0x5f005000), "fmls");     // FMLS_asisdelem_RH_H
+  COMPARE_PREFIX(dci(0x5f009000), "fmul");     // FMUL_asisdelem_RH_H
+  COMPARE_PREFIX(dci(0x5f801000), "fmla");     // FMLA_asisdelem_R_SD
+  COMPARE_PREFIX(dci(0x5f805000), "fmls");     // FMLS_asisdelem_R_SD
+  COMPARE_PREFIX(dci(0x5f809000), "fmul");     // FMUL_asisdelem_R_SD
+  COMPARE_PREFIX(dci(0x6f00f400), "fmov");     // FMOV_asimdimm_D2_d
+  COMPARE_PREFIX(dci(0x7e20e400), "fcmge");    // FCMGE_asisdsame_only
+  COMPARE_PREFIX(dci(0x7e20ec00), "facge");    // FACGE_asisdsame_only
+  COMPARE_PREFIX(dci(0x7e21a800), "fcvtnu");   // FCVTNU_asisdmisc_R
+  COMPARE_PREFIX(dci(0x7e21b800), "fcvtmu");   // FCVTMU_asisdmisc_R
+  COMPARE_PREFIX(dci(0x7e21c800), "fcvtau");   // FCVTAU_asisdmisc_R
+  COMPARE_PREFIX(dci(0x7e21d800), "ucvtf");    // UCVTF_asisdmisc_R
+  COMPARE_PREFIX(dci(0x7e30c800), "fmaxnmp");  // FMAXNMP_asisdpair_only_SD
+  COMPARE_PREFIX(dci(0x7e30d800), "faddp");    // FADDP_asisdpair_only_SD
+  COMPARE_PREFIX(dci(0x7e30f800), "fmaxp");    // FMAXP_asisdpair_only_SD
+  COMPARE_PREFIX(dci(0x7e402400), "fcmge");    // FCMGE_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x7e402c00), "facge");    // FACGE_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x7e79a800), "fcvtnu");   // FCVTNU_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x7e79b800), "fcvtmu");   // FCVTMU_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x7e79c800), "fcvtau");   // FCVTAU_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x7e79d800), "ucvtf");    // UCVTF_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x7ea0d400), "fabd");     // FABD_asisdsame_only
+  COMPARE_PREFIX(dci(0x7ea0e400), "fcmgt");    // FCMGT_asisdsame_only
+  COMPARE_PREFIX(dci(0x7ea0ec00), "facgt");    // FACGT_asisdsame_only
+  COMPARE_PREFIX(dci(0x7ea0c800), "fcmge");    // FCMGE_asisdmisc_FZ
+  COMPARE_PREFIX(dci(0x7ea0d800), "fcmle");    // FCMLE_asisdmisc_FZ
+  COMPARE_PREFIX(dci(0x7ea1a800), "fcvtpu");   // FCVTPU_asisdmisc_R
+  COMPARE_PREFIX(dci(0x7ea1b800), "fcvtzu");   // FCVTZU_asisdmisc_R
+  COMPARE_PREFIX(dci(0x7ea1d800), "frsqrte");  // FRSQRTE_asisdmisc_R
+  COMPARE_PREFIX(dci(0x7eb0c800), "fminnmp");  // FMINNMP_asisdpair_only_SD
+  COMPARE_PREFIX(dci(0x7eb0f800), "fminp");    // FMINP_asisdpair_only_SD
+  COMPARE_PREFIX(dci(0x7ec01400), "fabd");     // FABD_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x7ec02400), "fcmgt");    // FCMGT_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x7ec02c00), "facgt");    // FACGT_asisdsamefp16_only
+  COMPARE_PREFIX(dci(0x7ef8c800), "fcmge");    // FCMGE_asisdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x7ef8d800), "fcmle");    // FCMLE_asisdmiscfp16_FZ
+  COMPARE_PREFIX(dci(0x7ef9a800), "fcvtpu");   // FCVTPU_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x7ef9b800), "fcvtzu");   // FCVTZU_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x7ef9d800), "frsqrte");  // FRSQRTE_asisdmiscfp16_R
+  COMPARE_PREFIX(dci(0x7f009000), "fmulx");    // FMULX_asisdelem_RH_H
+  COMPARE_PREFIX(dci(0x7f809000), "fmulx");    // FMULX_asisdelem_R_SD
+
+  // ARMv8.2 - RAS
+  COMPARE_PREFIX(dci(0xd503221f), "esb");  // ESB_HI_hints
+
+  // ARMv8.2 - SHA3
+  // COMPARE_PREFIX(dci(0xce000000), "eor3");   // EOR3_VVV16_crypto4
+  // COMPARE_PREFIX(dci(0xce200000), "bcax");   // BCAX_VVV16_crypto4
+  // COMPARE_PREFIX(dci(0xce608c00), "rax1");   // RAX1_VVV2_cryptosha512_3
+  // COMPARE_PREFIX(dci(0xce800000), "xar");   // XAR_VVV2_crypto3_imm6
+
+  // ARMv8.2 - SHA512
+  // COMPARE_PREFIX(dci(0xce608000), "sha512h");   // SHA512H_QQV_cryptosha512_3
+  // COMPARE_PREFIX(dci(0xce608400), "sha512h2");   //
+  // SHA512H2_QQV_cryptosha512_3
+  // COMPARE_PREFIX(dci(0xce608800), "sha512su1");   //
+  // SHA512SU1_VVV2_cryptosha512_3
+  // COMPARE_PREFIX(dci(0xcec08000), "sha512su0");   //
+  // SHA512SU0_VV2_cryptosha512_2
+
+  // ARMv8.2 - SM3
+  // COMPARE_PREFIX(dci(0xce400000), "sm3ss1");   // SM3SS1_VVV4_crypto4
+  // COMPARE_PREFIX(dci(0xce408000), "sm3tt1a");   // SM3TT1A_VVV4_crypto3_imm2
+  // COMPARE_PREFIX(dci(0xce408400), "sm3tt1b");   // SM3TT1B_VVV4_crypto3_imm2
+  // COMPARE_PREFIX(dci(0xce408800), "sm3tt2a");   // SM3TT2A_VVV4_crypto3_imm2
+  // COMPARE_PREFIX(dci(0xce408c00), "sm3tt2b");   // SM3TT2B_VVV_crypto3_imm2
+  // COMPARE_PREFIX(dci(0xce60c000), "sm3partw1");   //
+  // SM3PARTW1_VVV4_cryptosha512_3
+  // COMPARE_PREFIX(dci(0xce60c400), "sm3partw2");   //
+  // SM3PARTW2_VVV4_cryptosha512_3
+
+  // ARMv8.2 - SM4
+  // COMPARE_PREFIX(dci(0xce60c800), "sm4ekey");   //
+  // SM4EKEY_VVV4_cryptosha512_3
+  // COMPARE_PREFIX(dci(0xcec08400), "sm4e");   // SM4E_VV4_cryptosha512_2
+
+  // ARMv8.2 - SPE
+  // COMPARE_PREFIX(dci(0xd503223f), "psb");   // PSB_HC_hints
+
+  // ARMv8.3 - FCMA
+  COMPARE_PREFIX(dci(0x2e40c400), "fcmla");  // FCMLA_asimdsame2_C
+  COMPARE_PREFIX(dci(0x2e00e400), "fcadd");  // FCADD_asimdsame2_C
+  COMPARE_PREFIX(dci(0x2f401000), "fcmla");  // FCMLA_asimdelem_C_H
+  COMPARE_PREFIX(dci(0x6f801000), "fcmla");  // FCMLA_asimdelem_C_S
+
+  // ARMv8.3 - JSCVT
+  COMPARE_PREFIX(dci(0x1e7e0000), "fjcvtzs");  // FJCVTZS_32D_float2int
+
+  // ARMv8.3 - LRCPC
+  COMPARE_PREFIX(dci(0x38a0c000), "ldaprb");  // LDAPRB_32L_memop
+  COMPARE_PREFIX(dci(0x78a0c000), "ldaprh");  // LDAPRH_32L_memop
+  COMPARE_PREFIX(dci(0xb8a0c000), "ldapr");   // LDAPR_32L_memop
+  COMPARE_PREFIX(dci(0xf8a0c000), "ldapr");   // LDAPR_64L_memop
+
+  // ARMv8.3 - PAuth
+  COMPARE_PREFIX(dci(0x9ac03000), "pacga");      // PACGA_64P_dp_2src
+  COMPARE_PREFIX(dci(0xd50320ff), "xpaclri");    // XPACLRI_HI_hints
+  COMPARE_PREFIX(dci(0xd503211f), "pacia1716");  // PACIA1716_HI_hints
+  COMPARE_PREFIX(dci(0xd503215f), "pacib1716");  // PACIB1716_HI_hints
+  COMPARE_PREFIX(dci(0xd503219f), "autia1716");  // AUTIA1716_HI_hints
+  COMPARE_PREFIX(dci(0xd50321df), "autib1716");  // AUTIB1716_HI_hints
+  COMPARE_PREFIX(dci(0xd503231f), "paciaz");     // PACIAZ_HI_hints
+  COMPARE_PREFIX(dci(0xd503233f), "paciasp");    // PACIASP_HI_hints
+  COMPARE_PREFIX(dci(0xd503235f), "pacibz");     // PACIBZ_HI_hints
+  COMPARE_PREFIX(dci(0xd503237f), "pacibsp");    // PACIBSP_HI_hints
+  COMPARE_PREFIX(dci(0xd503239f), "autiaz");     // AUTIAZ_HI_hints
+  COMPARE_PREFIX(dci(0xd50323bf), "autiasp");    // AUTIASP_HI_hints
+  COMPARE_PREFIX(dci(0xd50323df), "autibz");     // AUTIBZ_HI_hints
+  COMPARE_PREFIX(dci(0xd50323ff), "autibsp");    // AUTIBSP_HI_hints
+  COMPARE_PREFIX(dci(0xd61f081f), "braaz");      // BRAAZ_64_branch_reg
+  COMPARE_PREFIX(dci(0xd61f0c1f), "brabz");      // BRABZ_64_branch_reg
+  COMPARE_PREFIX(dci(0xd63f081f), "blraaz");     // BLRAAZ_64_branch_reg
+  COMPARE_PREFIX(dci(0xd63f0c1f), "blrabz");     // BLRABZ_64_branch_reg
+  COMPARE_PREFIX(dci(0xd65f0bff), "retaa");      // RETAA_64E_branch_reg
+  COMPARE_PREFIX(dci(0xd65f0fff), "retab");      // RETAB_64E_branch_reg
+  // COMPARE_PREFIX(dci(0xd69f0bff), "eretaa");   // ERETAA_64E_branch_reg
+  // COMPARE_PREFIX(dci(0xd69f0fff), "eretab");   // ERETAB_64E_branch_reg
+  COMPARE_PREFIX(dci(0xd71f0800), "braa");    // BRAA_64P_branch_reg
+  COMPARE_PREFIX(dci(0xd71f0c00), "brab");    // BRAB_64P_branch_reg
+  COMPARE_PREFIX(dci(0xd73f0800), "blraa");   // BLRAA_64P_branch_reg
+  COMPARE_PREFIX(dci(0xd73f0c00), "blrab");   // BLRAB_64P_branch_reg
+  COMPARE_PREFIX(dci(0xdac10000), "pacia");   // PACIA_64P_dp_1src
+  COMPARE_PREFIX(dci(0xdac10400), "pacib");   // PACIB_64P_dp_1src
+  COMPARE_PREFIX(dci(0xdac10800), "pacda");   // PACDA_64P_dp_1src
+  COMPARE_PREFIX(dci(0xdac10c00), "pacdb");   // PACDB_64P_dp_1src
+  COMPARE_PREFIX(dci(0xdac11000), "autia");   // AUTIA_64P_dp_1src
+  COMPARE_PREFIX(dci(0xdac11400), "autib");   // AUTIB_64P_dp_1src
+  COMPARE_PREFIX(dci(0xdac11800), "autda");   // AUTDA_64P_dp_1src
+  COMPARE_PREFIX(dci(0xdac11c00), "autdb");   // AUTDB_64P_dp_1src
+  COMPARE_PREFIX(dci(0xdac123e0), "paciza");  // PACIZA_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac127e0), "pacizb");  // PACIZB_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac12be0), "pacdza");  // PACDZA_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac12fe0), "pacdzb");  // PACDZB_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac133e0), "autiza");  // AUTIZA_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac137e0), "autizb");  // AUTIZB_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac13be0), "autdza");  // AUTDZA_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac13fe0), "autdzb");  // AUTDZB_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac143e0), "xpaci");   // XPACI_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xdac147e0), "xpacd");   // XPACD_64Z_dp_1src
+  COMPARE_PREFIX(dci(0xf8200400), "ldraa");   // LDRAA_64_ldst_pac
+  COMPARE_PREFIX(dci(0xf8200c00), "ldraa");   // LDRAA_64W_ldst_pac
+  COMPARE_PREFIX(dci(0xf8a00400), "ldrab");   // LDRAB_64_ldst_pac
+  COMPARE_PREFIX(dci(0xf8a00c00), "ldrab");   // LDRAB_64W_ldst_pac
+
+  // ARMv8.4 - FlagM
+  COMPARE_PREFIX(dci(0x3a00080d), "setf8");   // SETF8_only_setf
+  COMPARE_PREFIX(dci(0x3a00480d), "setf16");  // SETF16_only_setf
+  COMPARE_PREFIX(dci(0xba000400), "rmif");    // RMIF_only_rmif
+  COMPARE_PREFIX(dci(0xd500401f), "cfinv");   // CFINV_M_pstate
+
+  // ARMv8.4 - LRCPC2
+  COMPARE_PREFIX(dci(0x19000000), "stlurb");    // STLURB_32_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x19400000), "ldapurb");   // LDAPURB_32_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x19800000), "ldapursb");  // LDAPURSB_64_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x19c00000), "ldapursb");  // LDAPURSB_32_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x59000000), "stlurh");    // STLURH_32_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x59400000), "ldapurh");   // LDAPURH_32_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x59800000), "ldapursh");  // LDAPURSH_64_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x59c00000), "ldapursh");  // LDAPURSH_32_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x99000000), "stlur");     // STLUR_32_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x99400000), "ldapur");    // LDAPUR_32_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0x99800000), "ldapursw");  // LDAPURSW_64_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0xd9000000), "stlur");     // STLUR_64_ldapstl_unscaled
+  COMPARE_PREFIX(dci(0xd9400000), "ldapur");    // LDAPUR_64_ldapstl_unscaled
+
+  // ARMv8.4 - TRF
+  // COMPARE_PREFIX(dci(0xd503225f), "tsb");   // TSB_HC_hints
+
+  // ARMv8.5 - BTI
+  COMPARE_PREFIX(dci(0xd503241f), "bti");  // BTI_HB_hints
+
+  // ARMv8.5 - FRINTTS
+  COMPARE_PREFIX(dci(0x0e21e800), "frint32z");  // FRINT32Z_asimdmisc_R
+  COMPARE_PREFIX(dci(0x0e21f800), "frint64z");  // FRINT64Z_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2e21e800), "frint32x");  // FRINT32X_asimdmisc_R
+  COMPARE_PREFIX(dci(0x2e21f800), "frint64x");  // FRINT64X_asimdmisc_R
+  COMPARE_PREFIX(dci(0x1e284000), "frint32z");  // FRINT32Z_S_floatdp1
+  COMPARE_PREFIX(dci(0x1e28c000), "frint32x");  // FRINT32X_S_floatdp1
+  COMPARE_PREFIX(dci(0x1e294000), "frint64z");  // FRINT64Z_S_floatdp1
+  COMPARE_PREFIX(dci(0x1e29c000), "frint64x");  // FRINT64X_S_floatdp1
+  COMPARE_PREFIX(dci(0x1e684000), "frint32z");  // FRINT32Z_D_floatdp1
+  COMPARE_PREFIX(dci(0x1e68c000), "frint32x");  // FRINT32X_D_floatdp1
+  COMPARE_PREFIX(dci(0x1e694000), "frint64z");  // FRINT64Z_D_floatdp1
+  COMPARE_PREFIX(dci(0x1e69c000), "frint64x");  // FRINT64X_D_floatdp1
+
+  // ARMv8.5 - FlagM2
+  COMPARE_PREFIX(dci(0xd500403f), "xaflag");  // XAFLAG_M_pstate
+  COMPARE_PREFIX(dci(0xd500405f), "axflag");  // AXFLAG_M_pstate
+
+  // ARMv8.5 - MTE
+  // COMPARE_PREFIX(dci(0x68800000), "stgp");   // STGP_64_ldstpair_post
+  // COMPARE_PREFIX(dci(0x69000000), "stgp");   // STGP_64_ldstpair_off
+  // COMPARE_PREFIX(dci(0x69800000), "stgp");   // STGP_64_ldstpair_pre
+  // COMPARE_PREFIX(dci(0x91800000), "addg");   // ADDG_64_addsub_immtags
+  // COMPARE_PREFIX(dci(0x9ac00000), "subp");   // SUBP_64S_dp_2src
+  // COMPARE_PREFIX(dci(0x9ac01000), "irg");   // IRG_64I_dp_2src
+  // COMPARE_PREFIX(dci(0x9ac01400), "gmi");   // GMI_64G_dp_2src
+  // COMPARE_PREFIX(dci(0xbac00000), "subps");   // SUBPS_64S_dp_2src
+  // COMPARE_PREFIX(dci(0xd1800000), "subg");   // SUBG_64_addsub_immtags
+  // COMPARE_PREFIX(dci(0xd9200400), "stg");   // STG_64Spost_ldsttags
+  // COMPARE_PREFIX(dci(0xd9200800), "stg");   // STG_64Soffset_ldsttags
+  // COMPARE_PREFIX(dci(0xd9200c00), "stg");   // STG_64Spre_ldsttags
+  // COMPARE_PREFIX(dci(0xd9600000), "ldg");   // LDG_64Loffset_ldsttags
+  // COMPARE_PREFIX(dci(0xd9600400), "stzg");   // STZG_64Spost_ldsttags
+  // COMPARE_PREFIX(dci(0xd9600800), "stzg");   // STZG_64Soffset_ldsttags
+  // COMPARE_PREFIX(dci(0xd9600c00), "stzg");   // STZG_64Spre_ldsttags
+  // COMPARE_PREFIX(dci(0xd9a00400), "st2g");   // ST2G_64Spost_ldsttags
+  // COMPARE_PREFIX(dci(0xd9a00800), "st2g");   // ST2G_64Soffset_ldsttags
+  // COMPARE_PREFIX(dci(0xd9a00c00), "st2g");   // ST2G_64Spre_ldsttags
+  // COMPARE_PREFIX(dci(0xd9e00400), "stz2g");   // STZ2G_64Spost_ldsttags
+  // COMPARE_PREFIX(dci(0xd9e00800), "stz2g");   // STZ2G_64Soffset_ldsttags
+  // COMPARE_PREFIX(dci(0xd9e00c00), "stz2g");   // STZ2G_64Spre_ldsttags
+
+  // ARMv8.5 - MTE2
+  // COMPARE_PREFIX(dci(0xd9200000), "stzgm");   // STZGM_64bulk_ldsttags
+  // COMPARE_PREFIX(dci(0xd9a00000), "stgm");   // STGM_64bulk_ldsttags
+  // COMPARE_PREFIX(dci(0xd9e00000), "ldgm");   // LDGM_64bulk_ldsttags
+
+  // ARMv8.6 - BF16
+  // COMPARE_PREFIX(dci(0x0ea16800), "bfcvtn");   // BFCVTN_asimdmisc_4S
+  // COMPARE_PREFIX(dci(0x0f40f000), "bfdot");   // BFDOT_asimdelem_E
+  // COMPARE_PREFIX(dci(0x0fc0f000), "bfmlal");   // BFMLAL_asimdelem_F
+  // COMPARE_PREFIX(dci(0x2e40fc00), "bfdot");   // BFDOT_asimdsame2_D
+  // COMPARE_PREFIX(dci(0x2ec0fc00), "bfmlal");   // BFMLAL_asimdsame2_F_
+  // COMPARE_PREFIX(dci(0x1e634000), "bfcvt");   // BFCVT_BS_floatdp1
+  // COMPARE_PREFIX(dci(0x6e40ec00), "bfmmla");   // BFMMLA_asimdsame2_E
+
+  // ARMv8.6 - DGH
+  // COMPARE_PREFIX(dci(0xd50320df), "dgh");   // DGH_HI_hints
+
+  // ARMv8.6 - I8MM
+  COMPARE_PREFIX(dci(0x0e809c00), "usdot");   // USDOT_asimdsame2_D
+  COMPARE_PREFIX(dci(0x0f00f000), "sudot");   // SUDOT_asimdelem_D
+  COMPARE_PREFIX(dci(0x0f80f000), "usdot");   // USDOT_asimdelem_D
+  COMPARE_PREFIX(dci(0x4e80a400), "smmla");   // SMMLA_asimdsame2_G
+  COMPARE_PREFIX(dci(0x4e80ac00), "usmmla");  // USMMLA_asimdsame2_G
+  COMPARE_PREFIX(dci(0x6e80a400), "ummla");   // UMMLA_asimdsame2_G
+
+  // ARMv8.7 - LS64
+  // COMPARE_PREFIX(dci(0xf83f9000), "st64b");   // ST64B_64L_memop
+  // COMPARE_PREFIX(dci(0xf83fd000), "ld64b");   // LD64B_64L_memop
+
+  // ARMv8.7 - LS64_V
+  // COMPARE_PREFIX(dci(0xf820a000), "st64bv0");   // ST64BV0_64_memop
+  // COMPARE_PREFIX(dci(0xf820b000), "st64bv");   // ST64BV_64_memop
+
+  // ARMv8.7 - WFxT
+  // COMPARE_PREFIX(dci(0xd5031000), "wfet");   // WFET_only_systeminstrswithreg
+  // COMPARE_PREFIX(dci(0xd5031020), "wfit");   // WFIT_only_systeminstrswithreg
+
+  // TME
+  // COMPARE_PREFIX(dci(0xd4600000), "tcancel");   // TCANCEL_EX_exception
+  // COMPARE_PREFIX(dci(0xd503307f), "tcommit");   // TCOMMIT_only_barriers
+  // COMPARE_PREFIX(dci(0xd5233060), "tstart");   // TSTART_BR_systemresult
+  // COMPARE_PREFIX(dci(0xd5233160), "ttest");   // TTEST_BR_systemresult
 
   CLEANUP();
 }

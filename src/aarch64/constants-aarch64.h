@@ -523,7 +523,15 @@ enum DataCacheOp {
   CVAP = CacheOpEncoder<3, 7, 12, 1>::value,
   CVADP = CacheOpEncoder<3, 7, 13, 1>::value,
   CIVAC = CacheOpEncoder<3, 7, 14, 1>::value,
-  ZVA = CacheOpEncoder<3, 7, 4, 1>::value
+  ZVA = CacheOpEncoder<3, 7, 4, 1>::value,
+  GVA = CacheOpEncoder<3, 7, 4, 3>::value,
+  GZVA = CacheOpEncoder<3, 7, 4, 4>::value,
+  CGVAC = CacheOpEncoder<3, 7, 10, 3>::value,
+  CGDVAC = CacheOpEncoder<3, 7, 10, 5>::value,
+  CGVAP = CacheOpEncoder<3, 7, 12, 3>::value,
+  CGDVAP = CacheOpEncoder<3, 7, 12, 5>::value,
+  CIGVAC = CacheOpEncoder<3, 7, 14, 3>::value,
+  CIGDVAC = CacheOpEncoder<3, 7, 14, 5>::value
 };
 
 // Some SVE instructions support a predicate constraint pattern. This is
@@ -4404,11 +4412,11 @@ enum SVEVectorSelectOp {
   SEL_z_p_zz = SVEVectorSelectFixed
 };
 
-enum SVEVectorSplice_DestructiveOp {
-  SVEVectorSplice_DestructiveFixed = 0x052C8000,
-  SVEVectorSplice_DestructiveFMask = 0xFF3FE000,
-  SVEVectorSplice_DestructiveMask = 0xFF3FE000,
-  SPLICE_z_p_zz_des = SVEVectorSplice_DestructiveFixed
+enum SVEVectorSpliceOp {
+  SVEVectorSpliceFixed = 0x052C8000,
+  SVEVectorSpliceFMask = 0xFF3FE000,
+  SVEVectorSpliceMask = 0xFF3FE000,
+  SPLICE_z_p_zz_des = SVEVectorSpliceFixed
 };
 
 enum ReservedOp {

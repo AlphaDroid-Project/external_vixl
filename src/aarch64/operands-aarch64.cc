@@ -34,7 +34,7 @@ CPURegister CPURegList::PopLowestIndex(RegList mask) {
   RegList list = list_ & mask;
   if (list == 0) return NoCPUReg;
   int index = CountTrailingZeros(list);
-  VIXL_ASSERT(((1 << index) & list) != 0);
+  VIXL_ASSERT(((static_cast<RegList>(1) << index) & list) != 0);
   Remove(index);
   return CPURegister(index, size_, type_);
 }
@@ -45,7 +45,7 @@ CPURegister CPURegList::PopHighestIndex(RegList mask) {
   if (list == 0) return NoCPUReg;
   int index = CountLeadingZeros(list);
   index = kRegListSizeInBits - 1 - index;
-  VIXL_ASSERT(((1 << index) & list) != 0);
+  VIXL_ASSERT(((static_cast<RegList>(1) << index) & list) != 0);
   Remove(index);
   return CPURegister(index, size_, type_);
 }
@@ -360,12 +360,16 @@ bool MemOperand::IsRegisterOffset() const {
   return (addrmode_ == Offset) && !regoffset_.Is(NoReg);
 }
 
-
 bool MemOperand::IsPreIndex() const { return addrmode_ == PreIndex; }
-
-
 bool MemOperand::IsPostIndex() const { return addrmode_ == PostIndex; }
 
+bool MemOperand::IsImmediatePreIndex() const {
+  return IsPreIndex() && regoffset_.Is(NoReg);
+}
+
+bool MemOperand::IsImmediatePostIndex() const {
+  return IsPostIndex() && regoffset_.Is(NoReg);
+}
 
 void MemOperand::AddOffset(int64_t offset) {
   VIXL_ASSERT(IsImmediateOffset());
@@ -382,6 +386,7 @@ bool SVEMemOperand::IsValid() const {
     if (IsScalarPlusScalar()) count++;
     if (IsScalarPlusVector()) count++;
     if (IsVectorPlusImmediate()) count++;
+    if (IsVectorPlusScalar()) count++;
     if (IsVectorPlusVector()) count++;
     VIXL_ASSERT(count <= 1);
   }
@@ -406,7 +411,7 @@ bool SVEMemOperand::IsValid() const {
 
   return IsScalarPlusImmediate() || IsScalarPlusScalar() ||
          IsScalarPlusVector() || IsVectorPlusImmediate() ||
-         IsVectorPlusVector();
+         IsVectorPlusScalar() || IsVectorPlusVector();
 }
 
 
